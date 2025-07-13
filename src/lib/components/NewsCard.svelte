@@ -22,24 +22,17 @@
 	}
 
 	interface NewsArticle {
-		id: string;
-		title: string;
-		description: string;
-		content: string;
-		url: string;
-		urlToImage: string;
-		publishedAt: string;
-		source: NewsSource;
-		category: string;
-		country: string;
-		language: string;
-		readTime: string;
-		views: number;
-		likes: number;
-		comments: number;
-		featured: boolean;
-		sentiment: 'positive' | 'negative' | 'neutral';
-		tags: string[];
+		id: number;
+		title?: string;
+		content?: string;
+		summary?: string;
+		url?: string;
+		author?: string;
+		source?: string;
+		published_at?: string;
+		created_at?: string;
+		category?: string;
+		image_url?: string;
 	}
 
 	interface Props {
@@ -137,7 +130,7 @@
 >
 	<div class="relative {variant === 'list' ? 'w-48 flex-shrink-0' : ''}">
 		<img 
-			src={article.urlToImage || '/favicon.svg'} 
+			src={article.image_url || '/favicon.svg'} 
 			alt={article.title || 'Article image'}
 			class="w-full {variant === 'list' ? 'h-32' : variant === 'featured' ? 'h-64' : 'h-48'} object-cover transition-transform duration-300 hover:scale-105"
 			loading="lazy"
@@ -151,18 +144,14 @@
 					Featured
 				</span>
 			{/if}
-			<span class="text-xs {getSentimentColor(article.sentiment || 'neutral')} bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
-				{article.sentiment || 'neutral'}
+			<span class="text-xs text-surface-600 bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
+				{article.category || 'general'}
 			</span>
 		</div>
 		{#if variant === 'featured'}
 			<div class="absolute top-4 right-4">
 				<div class="flex items-center gap-2 bg-surface-900/80 backdrop-blur-sm rounded-full px-3 py-1">
-					<img src={article.source?.logo || '/favicon.svg'} alt={article.source?.name || 'Source'} class="w-4 h-4 rounded-full" />
-					<span class="text-white text-xs font-medium">{article.source?.name || 'Unknown Source'}</span>
-					{#if article.source?.isVerified}
-						<Star size={12} class="text-warning-400" />
-					{/if}
+					<span class="text-white text-xs font-medium">{article.source || 'Unknown Source'}</span>
 				</div>
 			</div>
 		{/if}
@@ -175,15 +164,8 @@
 					class="flex items-center gap-2 hover:text-primary-600 transition-colors"
 					onclick={(e) => { e.stopPropagation(); }}
 				>
-					<img src={article.source?.logo || '/favicon.svg'} alt={article.source?.name || 'Source'} class="w-4 h-4 rounded-full" />
-					<span class="text-sm font-medium">{article.source?.name || 'Unknown Source'}</span>
-					{#if article.source?.isVerified}
-						<Star size={12} class="text-warning-400" />
-					{/if}
+					<span class="text-sm font-medium">{article.source || 'Unknown Source'}</span>
 				</button>
-				<span class="text-xs {getTrustScoreColor(article.source?.trustScore || 0)} font-medium">
-					{article.source?.trustScore || 0}%
-				</span>
 			</div>
 		{/if}
 		
@@ -191,26 +173,26 @@
 			{article.title || 'Untitled'}
 		</h3>
 		<p class="text-surface-600 dark:text-surface-400 mb-3 line-clamp-2 text-sm">
-			{article.description || 'No description available'}
+			{article.summary || article.content || 'No description available'}
 		</p>
 		
 		<div class="flex flex-wrap gap-1 mb-3">
-			{#each (article.tags || []).slice(0, 2) as tag}
-				<span class="badge variant-ghost-surface text-xs">#{tag}</span>
-			{/each}
+			{#if article.author}
+				<span class="badge variant-ghost-surface text-xs">By {article.author}</span>
+			{/if}
 		</div>
 		
 		<div class="flex items-center justify-between text-xs text-surface-500 mb-3">
 			<div class="flex items-center space-x-3">
 				<span class="flex items-center gap-1">
 					<Clock size={12} />
-					{formatDate(article.publishedAt || new Date().toISOString())}
+					{formatDate(article.published_at || new Date().toISOString())}
 				</span>
 				<span class="flex items-center gap-1">
 					<MapPin size={12} />
-					{article.country || 'Unknown'}
+					{article.category || 'General'}
 				</span>
-				<span>{article.readTime || '1 min read'}</span>
+				<span>1 min read</span>
 			</div>
 			<button 
 				class="btn btn-sm variant-ghost-surface text-xs"
@@ -221,22 +203,8 @@
 			</button>
 		</div>
 		
-		<div class="flex items-center justify-between pt-3 border-t border-surface-200 dark:border-surface-700">
-			<div class="flex items-center space-x-3 text-xs text-surface-500">
-				<span class="flex items-center gap-1">
-					<Eye size={12} />
-					{formatViews(article.views || 0)}
-				</span>
-				<span class="flex items-center gap-1">
-					<Heart size={12} class={isLiked ? 'text-error-500 fill-current' : ''} />
-					{article.likes || 0}
-				</span>
-				<span class="flex items-center gap-1">
-					<MessageCircle size={12} />
-					{article.comments || 0}
-				</span>
-			</div>
-			{#if showActions}
+		{#if showActions}
+			<div class="flex items-center justify-end pt-3 border-t border-surface-200 dark:border-surface-700">
 				<div class="flex items-center space-x-1">
 					<button 
 						class="btn btn-sm variant-ghost-surface p-2 {isBookmarked ? 'text-warning-500' : ''}" 
@@ -260,7 +228,7 @@
 						<Heart size={14} class={isLiked ? 'text-error-500 fill-current' : ''} />
 					</button>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</div>
 </article> 

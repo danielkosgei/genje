@@ -16,25 +16,17 @@ export interface NewsSource {
 }
 
 export interface NewsArticle {
-	id: string;
+	id: number;
 	title?: string;
-	description?: string;
 	content?: string;
+	summary?: string;
 	url?: string;
-	urlToImage?: string;
-	publishedAt?: string;
-	source?: NewsSource;
-	category?: string;
-	country?: string;
-	language?: string;
-	readTime?: string;
-	views?: number;
-	likes?: number;
-	comments?: number;
-	featured?: boolean;
-	sentiment?: 'positive' | 'negative' | 'neutral';
-	tags?: string[];
 	author?: string;
+	source?: string;
+	published_at?: string;
+	created_at?: string;
+	category?: string;
+	image_url?: string;
 }
 
 export interface ApiResponse<T> {
@@ -75,8 +67,21 @@ class GenjeNewsAPI {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const data = await response.json();
-			return data;
+			const rawData = await response.json();
+			
+			// Transform the actual API response to match our interface
+			if (endpoint.includes('/articles') && rawData.articles) {
+				return {
+					data: rawData.articles,
+					success: true,
+					total: rawData.pagination?.total,
+					page: rawData.pagination?.page,
+					limit: rawData.pagination?.limit
+				};
+			}
+			
+			// For other endpoints, return as is
+			return rawData;
 		} catch (error) {
 			console.error(`API Error for ${endpoint}:`, error);
 			throw error;

@@ -116,9 +116,10 @@
 				if (!article) return false;
 				
 				const titleMatch = article.title?.toLowerCase().includes(searchLower);
-				const descMatch = article.description?.toLowerCase().includes(searchLower);
+				const contentMatch = article.content?.toLowerCase().includes(searchLower);
+				const summaryMatch = article.summary?.toLowerCase().includes(searchLower);
 				
-				return titleMatch || descMatch;
+				return titleMatch || contentMatch || summaryMatch;
 			});
 		}
 		
@@ -126,12 +127,12 @@
 			filtered = filtered.filter(article => article && article.category === selectedCategory);
 		}
 		
-		if (selectedCountry !== 'All') {
-			filtered = filtered.filter(article => article && article.country === selectedCountry);
+		if (selectedCategory !== 'All') {
+			filtered = filtered.filter(article => article && article.category === selectedCategory);
 		}
 		
 		if (selectedSource !== 'All') {
-			filtered = filtered.filter(article => article && article.source?.name === selectedSource);
+			filtered = filtered.filter(article => article && article.source === selectedSource);
 		}
 		
 		return filtered;
@@ -143,39 +144,28 @@
 		switch (sortBy) {
 			case 'publishedAt':
 				return sorted.sort((a, b) => 
-					new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
+					new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime()
 				);
-			case 'views':
-				return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
-			case 'likes':
-				return sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-			case 'comments':
-				return sorted.sort((a, b) => (b.comments || 0) - (a.comments || 0));
 			default:
 				return sorted;
 		}
 	});
 
-	const featuredNews = $derived(() => articles.filter(article => article.featured));
-
 	const filterOptions = $derived(() => {
-		const validCountries = articles
-			.map(a => a.country)
-			.filter(country => country && country.trim() !== '');
+		const validCategories = articles
+			.map(a => a.category)
+			.filter(category => category && category.trim() !== '');
 		
 		const validSources = articles
-			.map(a => a.source?.name)
-			.filter(name => name && name.trim() !== '');
+			.map(a => a.source)
+			.filter(source => source && source.trim() !== '');
 		
 		return {
 			categories: ['All', ...categories],
-			countries: ['All', ...new Set(validCountries)],
+			countries: ['All'], // No countries in API, just use All
 			sources: ['All', ...new Set(validSources)],
 			sortOptions: [
-				{ value: 'publishedAt', label: 'Latest' },
-				{ value: 'views', label: 'Most Viewed' },
-				{ value: 'likes', label: 'Most Liked' },
-				{ value: 'comments', label: 'Most Discussed' }
+				{ value: 'publishedAt', label: 'Latest' }
 			]
 		};
 	});
@@ -333,18 +323,18 @@
 	}
 
 	function handleArticleLike(article: NewsArticle) {
-		if (likedArticles.includes(article.id)) {
-			likedArticles = likedArticles.filter(id => id !== article.id);
+		if (likedArticles.includes(article.id.toString())) {
+			likedArticles = likedArticles.filter(id => id !== article.id.toString());
 		} else {
-			likedArticles = [...likedArticles, article.id];
+			likedArticles = [...likedArticles, article.id.toString()];
 		}
 	}
 
 	function handleArticleBookmark(article: NewsArticle) {
-		if (savedArticles.includes(article.id)) {
-			savedArticles = savedArticles.filter(id => id !== article.id);
+		if (savedArticles.includes(article.id.toString())) {
+			savedArticles = savedArticles.filter(id => id !== article.id.toString());
 		} else {
-			savedArticles = [...savedArticles, article.id];
+			savedArticles = [...savedArticles, article.id.toString()];
 		}
 	}
 
@@ -352,7 +342,7 @@
 		if (navigator.share) {
 			navigator.share({
 				title: article.title,
-				text: article.description,
+				text: article.summary || article.content,
 				url: article.url
 			});
 		}
@@ -653,28 +643,7 @@
 				</div>
 			{/if}
 
-			<!-- Featured News -->
-			{#if featuredNews().length > 0}
-				<section class="mb-12">
-					<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
-						<Star size={24} class="text-warning-600" />
-						Featured Stories
-					</h2>
-					
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-						{#each featuredNews() as article}
-							<NewsCard 
-								{article}
-								variant="featured"
-								onClick={handleArticleClick}
-								onBookmark={handleArticleBookmark}
-								onShare={handleArticleShare}
-								onLike={handleArticleLike}
-							/>
-						{/each}
-					</div>
-				</section>
-			{/if}
+
 
 			<!-- Regular News -->
 			<section>
