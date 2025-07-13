@@ -70,7 +70,8 @@
 	}
 
 	// Utility functions
-	function formatDate(dateString: string): string {
+	function formatDate(dateString: string | undefined): string {
+		if (!dateString) return 'Unknown date';
 		const date = new Date(dateString);
 		return date.toLocaleDateString('en-US', {
 			year: 'numeric',
@@ -101,8 +102,8 @@
 	function handleShare() {
 		if (navigator.share && article) {
 			navigator.share({
-				title: article.title,
-				text: article.description,
+				title: article.title || 'Article',
+				text: article.summary || article.content || 'Read this article',
 				url: window.location.href
 			});
 		} else {
@@ -121,7 +122,9 @@
 	}
 
 	function handleRelatedArticleClick(relatedArticle: NewsArticle) {
-		goto(`/article/${relatedArticle.id}`);
+		if (relatedArticle.id) {
+			goto(`/article/${relatedArticle.id}`);
+		}
 	}
 
 	// Load article when component mounts or article ID changes
@@ -207,18 +210,14 @@
 					<div class="flex items-center gap-4 mb-4">
 						<button 
 							class="flex items-center gap-2 hover:text-primary-600 transition-colors"
-							onclick={() => goto(`/source/${article!.source.id}`)}
+							onclick={() => goto(`/source/${article!.source}`)}
 						>
-							<img src={article.source.logo} alt={article.source.name} class="w-6 h-6 rounded-full" />
-							<span class="font-medium">{article.source.name}</span>
-							{#if article.source.isVerified}
-								<Star size={14} class="text-warning-400" />
-							{/if}
+							<span class="font-medium">{article.source}</span>
 						</button>
 						<span class="text-sm text-surface-500">•</span>
-						<span class="text-sm text-surface-500">{formatDate(article.publishedAt)}</span>
+						<span class="text-sm text-surface-500">{formatDate(article.published_at)}</span>
 						<span class="text-sm text-surface-500">•</span>
-						<span class="text-sm text-surface-500">{article.readTime}</span>
+						<span class="text-sm text-surface-500">1 min read</span>
 					</div>
 					
 					{#if article.author}
@@ -230,15 +229,15 @@
 					<div class="flex items-center gap-4 text-sm text-surface-500 mb-6">
 						<span class="flex items-center gap-1">
 							<Eye size={14} />
-							{formatViews(article.views)} views
+							{formatViews(article.views || 0)} views
 						</span>
 						<span class="flex items-center gap-1">
 							<Heart size={14} />
-							{article.likes} likes
+							{article.likes || 0} likes
 						</span>
 						<span class="flex items-center gap-1">
 							<MessageCircle size={14} />
-							{article.comments} comments
+							{article.comments || 0} comments
 						</span>
 					</div>
 				</div>
@@ -250,14 +249,14 @@
 
 				<!-- Article Description -->
 				<p class="text-xl text-surface-600 dark:text-surface-400 mb-8 leading-relaxed">
-					{article.description}
+					{article.summary || article.content}
 				</p>
 
 				<!-- Article Image -->
-				{#if article.urlToImage}
+				{#if article.image_url}
 					<div class="mb-8">
 						<img 
-							src={article.urlToImage} 
+							src={article.image_url} 
 							alt={article.title}
 							class="w-full h-96 object-cover rounded-lg"
 						/>
@@ -283,7 +282,7 @@
 				<div class="bg-surface-100 dark:bg-surface-800 p-4 rounded-lg mb-8">
 					<div class="flex items-center justify-between">
 						<div>
-							<p class="text-sm text-surface-600 dark:text-surface-400">Read the original article on {article.source.name}</p>
+							<p class="text-sm text-surface-600 dark:text-surface-400">Read the original article on {article.source}</p>
 						</div>
 						<button 
 							class="btn btn-sm variant-filled-primary"

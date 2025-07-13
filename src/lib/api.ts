@@ -124,7 +124,24 @@ class GenjeNewsAPI {
 	}
 
 	async getArticleById(id: string): Promise<ApiResponse<NewsArticle>> {
-		return this.fetchAPI<NewsArticle>(`/articles/${id}`);
+		try {
+			const response = await fetch(`${API_BASE_URL}/articles/${id}`);
+			
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const article = await response.json();
+			
+			// Transform the direct article response to match our interface
+			return {
+				data: article,
+				success: true
+			};
+		} catch (error) {
+			console.error(`API Error for /articles/${id}:`, error);
+			throw error;
+		}
 	}
 
 	async summarizeArticle(id: string): Promise<ApiResponse<{ summary: string }>> {
