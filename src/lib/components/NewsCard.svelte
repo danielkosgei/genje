@@ -33,6 +33,12 @@
 		created_at?: string;
 		category?: string;
 		image_url?: string;
+		views?: number;
+		likes?: number;
+		comments?: number;
+		featured?: boolean;
+		sentiment?: 'positive' | 'negative' | 'neutral';
+		tags?: string[];
 	}
 
 	interface Props {
@@ -144,8 +150,8 @@
 					Featured
 				</span>
 			{/if}
-			<span class="text-xs text-surface-600 bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
-				{article.category || 'general'}
+			<span class="text-xs {getSentimentColor(article.sentiment || 'neutral')} bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
+				{article.sentiment || 'neutral'}
 			</span>
 		</div>
 		{#if variant === 'featured'}
@@ -180,6 +186,9 @@
 			{#if article.author}
 				<span class="badge variant-ghost-surface text-xs">By {article.author}</span>
 			{/if}
+			{#each (article.tags || []).slice(0, 2) as tag}
+				<span class="badge variant-ghost-surface text-xs">#{tag}</span>
+			{/each}
 		</div>
 		
 		<div class="flex items-center justify-between text-xs text-surface-500 mb-3">
@@ -203,8 +212,22 @@
 			</button>
 		</div>
 		
-		{#if showActions}
-			<div class="flex items-center justify-end pt-3 border-t border-surface-200 dark:border-surface-700">
+		<div class="flex items-center justify-between pt-3 border-t border-surface-200 dark:border-surface-700">
+			<div class="flex items-center space-x-3 text-xs text-surface-500">
+				<span class="flex items-center gap-1">
+					<Eye size={12} />
+					{formatViews(article.views || 0)}
+				</span>
+				<span class="flex items-center gap-1">
+					<Heart size={12} class={isLiked ? 'text-error-500 fill-current' : ''} />
+					{article.likes || 0}
+				</span>
+				<span class="flex items-center gap-1">
+					<MessageCircle size={12} />
+					{article.comments || 0}
+				</span>
+			</div>
+			{#if showActions}
 				<div class="flex items-center space-x-1">
 					<button 
 						class="btn btn-sm variant-ghost-surface p-2 {isBookmarked ? 'text-warning-500' : ''}" 
@@ -228,7 +251,7 @@
 						<Heart size={14} class={isLiked ? 'text-error-500 fill-current' : ''} />
 					</button>
 				</div>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 </article> 

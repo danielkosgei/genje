@@ -146,10 +146,18 @@
 				return sorted.sort((a, b) => 
 					new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime()
 				);
+			case 'views':
+				return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+			case 'likes':
+				return sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+			case 'comments':
+				return sorted.sort((a, b) => (b.comments || 0) - (a.comments || 0));
 			default:
 				return sorted;
 		}
 	});
+
+	const featuredNews = $derived(() => articles.filter(article => article.featured));
 
 	const filterOptions = $derived(() => {
 		const validCategories = articles
@@ -165,7 +173,10 @@
 			countries: ['All'], // No countries in API, just use All
 			sources: ['All', ...new Set(validSources)],
 			sortOptions: [
-				{ value: 'publishedAt', label: 'Latest' }
+				{ value: 'publishedAt', label: 'Latest' },
+				{ value: 'views', label: 'Most Viewed' },
+				{ value: 'likes', label: 'Most Liked' },
+				{ value: 'comments', label: 'Most Discussed' }
 			]
 		};
 	});
@@ -644,6 +655,28 @@
 			{/if}
 
 
+			<!-- Featured News -->
+			{#if featuredNews().length > 0}
+				<section class="mb-12">
+					<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+						<Star size={24} class="text-warning-600" />
+						Featured Stories
+					</h2>
+					
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						{#each featuredNews() as article}
+							<NewsCard 
+								{article}
+								variant="featured"
+								onClick={handleArticleClick}
+								onBookmark={handleArticleBookmark}
+								onShare={handleArticleShare}
+								onLike={handleArticleLike}
+							/>
+						{/each}
+					</div>
+				</section>
+			{/if}
 
 			<!-- Regular News -->
 			<section>

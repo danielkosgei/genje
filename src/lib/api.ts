@@ -27,6 +27,12 @@ export interface NewsArticle {
 	created_at?: string;
 	category?: string;
 	image_url?: string;
+	views?: number;
+	likes?: number;
+	comments?: number;
+	featured?: boolean;
+	sentiment?: 'positive' | 'negative' | 'neutral';
+	tags?: string[];
 }
 
 export interface ApiResponse<T> {
