@@ -1,288 +1,371 @@
 <!-- +page.svelte - Main News Feed -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { 
+		Rss, 
 		Search, 
-		Menu, 
 		Bell, 
+		Settings, 
 		User, 
-		TrendingUp, 
-		Clock, 
+		Menu, 
 		Globe, 
-		Filter,
+		TrendingUp, 
+		Star, 
+		Bookmark, 
+		Heart, 
+		Clock, 
 		ChevronRight,
-		Heart,
-		Share2,
-		Bookmark,
+		Filter,
+		Grid,
+		List,
+		X,
+		MapPin,
 		Eye,
 		MessageCircle,
+		Share2,
 		ExternalLink,
-		Rss,
-		Star,
-		Zap,
-		Calendar,
-		MapPin,
-		Settings,
-		Plus,
-		Minus
+		AlertCircle,
+		Loader2
 	} from '@lucide/svelte';
 	import NewsCard from '$lib/components/NewsCard.svelte';
 	import EnhancedSearch from '$lib/components/EnhancedSearch.svelte';
-	import StatsDashboard from '$lib/components/StatsDashboard.svelte';
 	import EnhancedFilters from '$lib/components/EnhancedFilters.svelte';
+	import StatsDashboard from '$lib/components/StatsDashboard.svelte';
+	import genjeAPI, { type NewsArticle, type NewsSource, type StatsData, type TrendingTopic } from '$lib/api.js';
 
-	interface NewsSource {
-		id: string;
-		name: string;
-		domain: string;
-		logo: string;
-		category: string;
-		trustScore: number;
-		isVerified: boolean;
+	interface StatItem {
+		icon: any;
+		label: string;
+		value: number | string;
+		change?: number;
+		color: string;
+		bgColor: string;
 	}
 
-	interface NewsArticle {
-		id: string;
-		title: string;
-		description: string;
-		content: string;
-		url: string;
-		urlToImage: string;
-		publishedAt: string;
-		source: NewsSource;
-		category: string;
-		country: string;
-		language: string;
-		readTime: string;
-		views: number;
-		likes: number;
-		comments: number;
-		featured: boolean;
-		sentiment: 'positive' | 'negative' | 'neutral';
-		tags: string[];
-	}
-
-	// Reactive state using Svelte 5 runes
-	let selectedCategory = $state('All');
+	// State management
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let articles = $state<NewsArticle[]>([]);
+	let sources = $state<NewsSource[]>([]);
+	let categories = $state<string[]>([]);
+	let stats = $state<StatsData | null>(null);
+	let trendingTopics = $state<TrendingTopic[]>([]);
+	
+	// UI state
 	let searchQuery = $state('');
-	let isMobileMenuOpen = $state(false);
-	let currentPage = $state('home');
+	let selectedCategory = $state('All');
 	let selectedCountry = $state('All');
 	let selectedSource = $state('All');
 	let sortBy = $state('publishedAt');
-	let viewMode = $state('grid');
+	let viewMode = $state<'grid' | 'list'>('grid');
+	let currentPage = $state('home');
+	let showTrendingTopics = $state(false);
 	let showNotifications = $state(false);
 	let showUserMenu = $state(false);
-
-	// Mock news sources data
-	const newsSources: NewsSource[] = $state([
-		{ id: '1', name: 'BBC News', domain: 'bbc.com', logo: 'https://logo.clearbit.com/bbc.com', category: 'General', trustScore: 95, isVerified: true },
-		{ id: '2', name: 'Reuters', domain: 'reuters.com', logo: 'https://logo.clearbit.com/reuters.com', category: 'General', trustScore: 98, isVerified: true },
-		{ id: '3', name: 'TechCrunch', domain: 'techcrunch.com', logo: 'https://logo.clearbit.com/techcrunch.com', category: 'Technology', trustScore: 90, isVerified: true },
-		{ id: '4', name: 'CNN', domain: 'cnn.com', logo: 'https://logo.clearbit.com/cnn.com', category: 'General', trustScore: 85, isVerified: true },
-		{ id: '5', name: 'The Guardian', domain: 'theguardian.com', logo: 'https://logo.clearbit.com/theguardian.com', category: 'General', trustScore: 92, isVerified: true }
-	]);
-
-	// Mock news data with aggregator structure
-	const newsArticles: NewsArticle[] = $state([
+	let isMobileMenuOpen = $state(false);
+	
+	// Pagination
+	let currentPageNumber = $state(1);
+	let totalPages = $state(1);
+	let hasMore = $state(true);
+	
+	// User interactions
+	let savedArticles = $state<string[]>([]);
+	let likedArticles = $state<string[]>([]);
+	
+	// Notifications (mock for now)
+	let notifications = $state([
 		{
 			id: '1',
-			title: 'Global Economic Summit Reaches Breakthrough Agreement',
-			description: 'World leaders announce comprehensive trade agreements that could reshape international commerce for the next decade.',
-			content: 'Full article content here...',
-			url: 'https://example.com/article1',
-			urlToImage: 'https://picsum.photos/600/400?random=1',
-			publishedAt: '2024-07-13T10:30:00Z',
-			source: newsSources[0],
-			category: 'Business',
-			country: 'Global',
-			language: 'en',
-			readTime: '5 min read',
-			views: 25400,
-			likes: 1234,
-			comments: 189,
-			featured: true,
-			sentiment: 'positive',
-			tags: ['economy', 'trade', 'global', 'summit']
+			title: 'Breaking News',
+			message: 'Major story developing...',
+			timestamp: '2 min ago',
+			read: false,
+			icon: 'primary'
 		},
 		{
 			id: '2',
-			title: 'Revolutionary AI Breakthrough in Medical Diagnosis',
-			description: 'New artificial intelligence system shows 99% accuracy in early cancer detection, potentially saving millions of lives.',
-			content: 'Full article content here...',
-			url: 'https://example.com/article2',
-			urlToImage: 'https://picsum.photos/600/400?random=2',
-			publishedAt: '2024-07-13T09:15:00Z',
-			source: newsSources[2],
-			category: 'Technology',
-			country: 'US',
-			language: 'en',
-			readTime: '7 min read',
-			views: 18900,
-			likes: 892,
-			comments: 234,
-			featured: true,
-			sentiment: 'positive',
-			tags: ['ai', 'medical', 'breakthrough', 'cancer']
+			title: 'New Sources Added',
+			message: '5 new trusted sources available',
+			timestamp: '1 hour ago',
+			read: false,
+			icon: 'success'
 		},
 		{
 			id: '3',
-			title: 'Climate Change Summit Addresses Rising Sea Levels',
-			description: 'International coalition announces $50 billion fund to combat rising sea levels affecting coastal cities worldwide.',
-			content: 'Full article content here...',
-			url: 'https://example.com/article3',
-			urlToImage: 'https://picsum.photos/600/400?random=3',
-			publishedAt: '2024-07-13T08:45:00Z',
-			source: newsSources[1],
-			category: 'Environment',
-			country: 'Global',
-			language: 'en',
-			readTime: '6 min read',
-			views: 15600,
-			likes: 567,
-			comments: 123,
-			featured: false,
-			sentiment: 'neutral',
-			tags: ['climate', 'environment', 'funding', 'coastal']
-		},
-		{
-			id: '4',
-			title: 'Space Exploration Mission Discovers New Exoplanet',
-			description: 'NASA announces discovery of potentially habitable exoplanet just 20 light-years away from Earth.',
-			content: 'Full article content here...',
-			url: 'https://example.com/article4',
-			urlToImage: 'https://picsum.photos/600/400?random=4',
-			publishedAt: '2024-07-13T07:20:00Z',
-			source: newsSources[3],
-			category: 'Science',
-			country: 'US',
-			language: 'en',
-			readTime: '4 min read',
-			views: 22100,
-			likes: 1456,
-			comments: 298,
-			featured: false,
-			sentiment: 'positive',
-			tags: ['space', 'nasa', 'exoplanet', 'discovery']
-		},
-		{
-			id: '5',
-			title: 'Cryptocurrency Market Sees Major Regulatory Changes',
-			description: 'New international regulations could significantly impact the future of digital currencies and blockchain technology.',
-			content: 'Full article content here...',
-			url: 'https://example.com/article5',
-			urlToImage: 'https://picsum.photos/600/400?random=5',
-			publishedAt: '2024-07-13T06:10:00Z',
-			source: newsSources[4],
-			category: 'Finance',
-			country: 'Global',
-			language: 'en',
-			readTime: '8 min read',
-			views: 12800,
-			likes: 423,
-			comments: 187,
-			featured: false,
-			sentiment: 'negative',
-			tags: ['cryptocurrency', 'regulation', 'blockchain', 'finance']
+			title: 'System Update',
+			message: 'Enhanced search features now live',
+			timestamp: '3 hours ago',
+			read: true,
+			icon: 'warning'
 		}
 	]);
 
-	const categories = ['All', 'Business', 'Technology', 'Environment', 'Science', 'Finance', 'Sports', 'Health', 'Politics'];
-	const countries = ['All', 'Global', 'US', 'UK', 'EU', 'Asia', 'Africa'];
-	const sources = ['All', ...newsSources.map(s => s.name)];
-
-	// Computed values using Svelte 5 runes
-	const filteredNews = $derived(() => {
-		return newsArticles.filter(article => {
-			const matchesCategory = selectedCategory === 'All' || article.category === selectedCategory;
-			const matchesCountry = selectedCountry === 'All' || article.country === selectedCountry;
-			const matchesSource = selectedSource === 'All' || article.source.name === selectedSource;
-			const matchesSearch = searchQuery === '' || 
-				article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				article.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				article.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-			return matchesCategory && matchesCountry && matchesSource && matchesSearch;
-		});
+	// Computed values
+	let filteredNews = $derived(() => {
+		if (!articles || articles.length === 0) {
+			return [];
+		}
+		
+		let filtered = articles;
+		
+		if (searchQuery && searchQuery.trim()) {
+			const searchLower = searchQuery.toLowerCase();
+			filtered = filtered.filter(article => {
+				if (!article) return false;
+				
+				const titleMatch = article.title?.toLowerCase().includes(searchLower);
+				const descMatch = article.description?.toLowerCase().includes(searchLower);
+				
+				return titleMatch || descMatch;
+			});
+		}
+		
+		if (selectedCategory !== 'All') {
+			filtered = filtered.filter(article => article && article.category === selectedCategory);
+		}
+		
+		if (selectedCountry !== 'All') {
+			filtered = filtered.filter(article => article && article.country === selectedCountry);
+		}
+		
+		if (selectedSource !== 'All') {
+			filtered = filtered.filter(article => article && article.source?.name === selectedSource);
+		}
+		
+		return filtered;
 	});
-
-	const featuredNews = $derived(() => filteredNews.filter(article => article.featured));
-	const regularNews = $derived(() => filteredNews.filter(article => !article.featured));
 
 	const sortedNews = $derived(() => {
-		const news = [...regularNews];
+		const sorted = [...filteredNews()];
+		
 		switch (sortBy) {
 			case 'publishedAt':
-				return news.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+				return sorted.sort((a, b) => 
+					new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
+				);
 			case 'views':
-				return news.sort((a, b) => b.views - a.views);
+				return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
 			case 'likes':
-				return news.sort((a, b) => b.likes - a.likes);
+				return sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+			case 'comments':
+				return sorted.sort((a, b) => (b.comments || 0) - (a.comments || 0));
 			default:
-				return news;
+				return sorted;
 		}
 	});
 
-	// Stats data for dashboard
-	const statsData = $derived(() => [
-		{
-			icon: Rss,
-			label: 'Active Sources',
-			value: newsSources.length,
-			change: 12,
-			color: 'text-primary-600',
-			bgColor: 'bg-primary-500'
-		},
-		{
-			icon: Zap,
-			label: 'Articles Today',
-			value: newsArticles.length,
-			change: 8,
-			color: 'text-success-600',
-			bgColor: 'bg-success-500'
-		},
-		{
-			icon: Globe,
-			label: 'Countries',
-			value: countries.length - 1,
-			change: 5,
-			color: 'text-warning-600',
-			bgColor: 'bg-warning-500'
-		},
-		{
-			icon: Eye,
-			label: 'Total Views',
-			value: newsArticles.reduce((sum, article) => sum + article.views, 0),
-			change: 15,
-			color: 'text-error-600',
-			bgColor: 'bg-error-500'
-		}
-	]);
+	const featuredNews = $derived(() => articles.filter(article => article.featured));
 
-	// Filter options for enhanced filters component
 	const filterOptions = $derived(() => {
-		const news = filteredNews();
+		const validCountries = articles
+			.map(a => a.country)
+			.filter(country => country && country.trim() !== '');
+		
+		const validSources = articles
+			.map(a => a.source?.name)
+			.filter(name => name && name.trim() !== '');
+		
 		return {
-			categories: categories.map(cat => ({ value: cat, label: cat, count: news.filter((a: NewsArticle) => cat === 'All' || a.category === cat).length })),
-			countries: countries.map(country => ({ value: country, label: country, count: news.filter((a: NewsArticle) => country === 'All' || a.country === country).length })),
-			sources: sources.map(source => ({ value: source, label: source, count: news.filter((a: NewsArticle) => source === 'All' || a.source.name === source).length })),
+			categories: ['All', ...categories],
+			countries: ['All', ...new Set(validCountries)],
+			sources: ['All', ...new Set(validSources)],
 			sortOptions: [
 				{ value: 'publishedAt', label: 'Latest' },
 				{ value: 'views', label: 'Most Viewed' },
-				{ value: 'likes', label: 'Most Liked' }
+				{ value: 'likes', label: 'Most Liked' },
+				{ value: 'comments', label: 'Most Discussed' }
 			]
 		};
 	});
 
-	function formatDate(dateString: string): string {
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+	// Transform API stats data into StatItem array for the dashboard
+	const statsItems = $derived(() => {
+		if (!stats) return [];
 		
-		if (diffInHours < 1) return 'Just now';
-		if (diffInHours < 24) return `${diffInHours}h ago`;
-		if (diffInHours < 48) return 'Yesterday';
-		return date.toLocaleDateString();
+		return [
+			{
+				icon: Rss,
+				label: 'Total Articles',
+				value: stats.totalArticles,
+				color: 'text-primary-600',
+				bgColor: 'bg-primary-500'
+			},
+			{
+				icon: Globe,
+				label: 'Active Sources',
+				value: stats.sourcesActive,
+				color: 'text-success-600',
+				bgColor: 'bg-success-500'
+			},
+			{
+				icon: TrendingUp,
+				label: 'Categories',
+				value: stats.totalCategories,
+				color: 'text-warning-600',
+				bgColor: 'bg-warning-500'
+			},
+			{
+				icon: Clock,
+				label: 'Last Hour',
+				value: stats.articlesLastHour,
+				color: 'text-error-600',
+				bgColor: 'bg-error-500'
+			}
+		];
+	});
+
+	// API functions
+	async function loadInitialData() {
+		try {
+			isLoading = true;
+			error = null;
+
+			// Load data in parallel
+			const [articlesResponse, sourcesResponse, categoriesResponse, statsResponse, trendsResponse] = await Promise.all([
+				genjeAPI.getArticles({ limit: 20, page: 1 }),
+				genjeAPI.getSources(),
+				genjeAPI.getCategories(),
+				genjeAPI.getStats(),
+				genjeAPI.getTrends(6)
+			]);
+
+			if (articlesResponse.success) {
+				articles = articlesResponse.data;
+				totalPages = Math.ceil((articlesResponse.total || 0) / 20);
+			}
+
+			if (sourcesResponse.success) {
+				sources = sourcesResponse.data;
+			}
+
+			if (categoriesResponse.success) {
+				categories = categoriesResponse.data;
+			}
+
+			if (statsResponse.success) {
+				stats = statsResponse.data;
+			}
+
+			if (trendsResponse.success) {
+				trendingTopics = trendsResponse.data;
+			}
+
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to load news data';
+			console.error('Error loading initial data:', err);
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function loadMoreArticles() {
+		if (currentPageNumber >= totalPages) return;
+
+		try {
+			const response = await genjeAPI.getArticles({ 
+				limit: 20, 
+				page: currentPageNumber + 1,
+				category: selectedCategory !== 'All' ? selectedCategory : undefined,
+				source: selectedSource !== 'All' ? selectedSource : undefined,
+				q: searchQuery || undefined
+			});
+
+			if (response.success) {
+				articles = [...articles, ...response.data];
+				currentPageNumber++;
+				hasMore = currentPageNumber < totalPages;
+			}
+		} catch (err) {
+			console.error('Error loading more articles:', err);
+		}
+	}
+
+	async function performSearch() {
+		if (!searchQuery.trim()) {
+			loadInitialData();
+			return;
+		}
+
+		try {
+			isLoading = true;
+			const response = await genjeAPI.searchArticles(searchQuery, {
+				limit: 20,
+				page: 1,
+				category: selectedCategory !== 'All' ? selectedCategory : undefined,
+				source: selectedSource !== 'All' ? selectedSource : undefined
+			});
+
+			if (response.success) {
+				articles = response.data;
+				currentPageNumber = 1;
+				totalPages = Math.ceil((response.total || 0) / 20);
+			}
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Search failed';
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function refreshData() {
+		try {
+			await genjeAPI.refreshAll();
+			await loadInitialData();
+		} catch (err) {
+			console.error('Error refreshing data:', err);
+		}
+	}
+
+	// Event handlers
+	function handleSearch(query: string) {
+		searchQuery = query;
+		if (query.trim()) {
+			performSearch();
+		} else {
+			loadInitialData();
+		}
+	}
+
+	function handleArticleClick(article: NewsArticle) {
+		goto(`/article/${article.id}`);
+	}
+
+	function handleArticleLike(article: NewsArticle) {
+		if (likedArticles.includes(article.id)) {
+			likedArticles = likedArticles.filter(id => id !== article.id);
+		} else {
+			likedArticles = [...likedArticles, article.id];
+		}
+	}
+
+	function handleArticleBookmark(article: NewsArticle) {
+		if (savedArticles.includes(article.id)) {
+			savedArticles = savedArticles.filter(id => id !== article.id);
+		} else {
+			savedArticles = [...savedArticles, article.id];
+		}
+	}
+
+	function handleArticleShare(article: NewsArticle) {
+		if (navigator.share) {
+			navigator.share({
+				title: article.title,
+				text: article.description,
+				url: article.url
+			});
+		}
+	}
+
+	function handleTrendingTopicClick(topic: string) {
+		searchQuery = topic;
+		performSearch();
+		showTrendingTopics = false;
+	}
+
+	function markAllNotificationsRead() {
+		notifications = notifications.map(n => ({ ...n, read: true }));
 	}
 
 	function formatViews(views: number): string {
@@ -291,51 +374,17 @@
 		return views.toString();
 	}
 
-	function getSentimentColor(sentiment: string): string {
-		switch (sentiment) {
-			case 'positive': return 'text-success-600';
-			case 'negative': return 'text-error-600';
-			default: return 'text-surface-600';
+	// Reactive statements for filter changes
+	$effect(() => {
+		if (selectedCategory !== 'All' || selectedCountry !== 'All' || selectedSource !== 'All') {
+			loadInitialData();
 		}
-	}
+	});
 
-	function getTrustScoreColor(score: number): string {
-		if (score >= 95) return 'text-success-600';
-		if (score >= 85) return 'text-warning-600';
-		return 'text-error-600';
-	}
-
-	function navigateToArticle(article: NewsArticle): void {
-		goto(`/article/${article.id}`);
-	}
-
-	function navigateToSource(source: NewsSource): void {
-		goto(`/source/${source.id}`);
-	}
-
-	// Event handlers for enhanced components
-	function handleSearch(query: string) {
-		searchQuery = query;
-	}
-
-	function handleArticleLike(article: NewsArticle) {
-		console.log('Liked article:', article.title);
-		// Here you would typically make an API call
-	}
-
-	function handleArticleBookmark(article: NewsArticle) {
-		console.log('Bookmarked article:', article.title);
-		// Here you would typically make an API call
-	}
-
-	function handleArticleShare(article: NewsArticle) {
-		console.log('Shared article:', article.title);
-		// Here you would typically open share dialog
-	}
-
-	function handleArticleClick(article: NewsArticle) {
-		navigateToArticle(article);
-	}
+	// Load data on mount
+	onMount(() => {
+		loadInitialData();
+	});
 </script>
 
 <div class="min-h-screen bg-surface-50 dark:bg-surface-900">
@@ -366,20 +415,6 @@
 							<span class="ml-2">Home</span>
 						</button>
 						<button 
-							class="btn btn-sm {currentPage === 'trending' ? 'variant-filled-primary' : 'variant-ghost-surface'}"
-							onclick={() => currentPage = 'trending'}
-						>
-							<TrendingUp size={16} />
-							<span class="ml-2">Trending</span>
-						</button>
-						<button 
-							class="btn btn-sm {currentPage === 'sources' ? 'variant-filled-primary' : 'variant-ghost-surface'}"
-							onclick={() => currentPage = 'sources'}
-						>
-							<Star size={16} />
-							<span class="ml-2">Sources</span>
-						</button>
-						<button 
 							class="btn btn-sm {currentPage === 'saved' ? 'variant-filled-primary' : 'variant-ghost-surface'}"
 							onclick={() => currentPage = 'saved'}
 						>
@@ -390,17 +425,29 @@
 				</div>
 
 				<!-- Enhanced Search -->
-				<div class="hidden md:flex flex-1 max-w-lg mx-8">
+				<div class="hidden md:flex flex-1 max-w-2xl mx-8">
 					<EnhancedSearch 
 						value={searchQuery}
-						resultsCount={filteredNews.length}
+						resultsCount={filteredNews()?.length || 0}
 						onSearch={handleSearch}
-						onClear={() => searchQuery = ''}
+						onClear={() => {
+							searchQuery = '';
+							loadInitialData();
+						}}
 					/>
 				</div>
 
 				<!-- User Actions -->
 				<div class="flex items-center space-x-2">
+					<button 
+						class="btn btn-sm variant-ghost-surface"
+						onclick={refreshData}
+						disabled={isLoading}
+					>
+						<Loader2 size={16} class={isLoading ? 'animate-spin' : 'hidden'} />
+						<TrendingUp size={16} class={isLoading ? 'hidden' : ''} />
+					</button>
+					
 					<button class="btn btn-sm variant-ghost-surface md:hidden">
 						<Search size={20} />
 					</button>
@@ -412,31 +459,31 @@
 							onclick={() => showNotifications = !showNotifications}
 						>
 							<Bell size={20} />
-							<span class="absolute -top-1 -right-1 w-3 h-3 bg-error-500 rounded-full animate-pulse"></span>
+							{#if notifications.some(n => !n.read)}
+								<span class="absolute -top-1 -right-1 w-3 h-3 bg-error-500 rounded-full animate-pulse"></span>
+							{/if}
 						</button>
 						
 						{#if showNotifications}
-							<div class="absolute top-full right-0 mt-2 w-80 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50">
-								<div class="p-4 border-b border-surface-200 dark:border-surface-700">
+							<div class="absolute top-full right-0 mt-2 w-80 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+								<div class="p-4 border-b border-surface-200 dark:border-surface-700 flex items-center justify-between">
 									<h3 class="font-semibold">Notifications</h3>
+									<button class="text-xs text-surface-500 hover:text-surface-700" onclick={markAllNotificationsRead}>Mark all read</button>
 								</div>
-								<div class="p-4">
-									<div class="space-y-3">
-										<div class="flex items-center gap-3 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded">
-											<div class="w-2 h-2 bg-primary-500 rounded-full"></div>
-											<div class="flex-1">
-												<p class="text-sm font-medium">New article from BBC News</p>
-												<p class="text-xs text-surface-500">2 minutes ago</p>
+								<div class="p-2">
+									{#each notifications as notification}
+										<div class="flex items-center gap-3 p-3 hover:bg-surface-100 dark:hover:bg-surface-700 rounded transition-colors cursor-pointer {!notification.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''}">
+											<div class="w-2 h-2 rounded-full {notification.icon === 'primary' ? 'bg-primary-500' : notification.icon === 'success' ? 'bg-success-500' : notification.icon === 'warning' ? 'bg-warning-500' : 'bg-surface-500'}"></div>
+											<div class="flex-1 min-w-0">
+												<p class="text-sm font-medium truncate">{notification.title}</p>
+												<p class="text-xs text-surface-500 truncate">{notification.message}</p>
+												<p class="text-xs text-surface-400">{notification.timestamp}</p>
 											</div>
+											{#if !notification.read}
+												<div class="w-2 h-2 bg-primary-500 rounded-full"></div>
+											{/if}
 										</div>
-										<div class="flex items-center gap-3 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded">
-											<div class="w-2 h-2 bg-success-500 rounded-full"></div>
-											<div class="flex-1">
-												<p class="text-sm font-medium">Trending topic: AI Breakthrough</p>
-												<p class="text-xs text-surface-500">5 minutes ago</p>
-											</div>
-										</div>
-									</div>
+									{/each}
 								</div>
 							</div>
 						{/if}
@@ -456,15 +503,38 @@
 						</button>
 						
 						{#if showUserMenu}
-							<div class="absolute top-full right-0 mt-2 w-48 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50">
+							<div class="absolute top-full right-0 mt-2 w-56 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50">
+								<div class="p-3 border-b border-surface-200 dark:border-surface-700">
+									<div class="flex items-center gap-3">
+										<div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
+											<User size={16} class="text-white" />
+										</div>
+										<div>
+											<p class="text-sm font-medium">John Doe</p>
+											<p class="text-xs text-surface-500">john.doe@example.com</p>
+										</div>
+									</div>
+								</div>
 								<div class="p-2">
-									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm">
+									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2">
+										<User size={14} />
 										Profile
 									</button>
-									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm">
+									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2">
+										<Bookmark size={14} />
+										Saved Articles ({savedArticles.length})
+									</button>
+									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2">
+										<Heart size={14} />
+										Liked Articles ({likedArticles.length})
+									</button>
+									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm flex items-center gap-2">
+										<Settings size={14} />
 										Settings
 									</button>
-									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm">
+								</div>
+								<div class="p-2 border-t border-surface-200 dark:border-surface-700">
+									<button class="w-full text-left p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-sm text-error-600">
 										Sign Out
 									</button>
 								</div>
@@ -478,9 +548,12 @@
 			<div class="md:hidden mt-4">
 				<EnhancedSearch 
 					value={searchQuery}
-					resultsCount={filteredNews.length}
+					resultsCount={filteredNews()?.length || 0}
 					onSearch={handleSearch}
-					onClear={() => searchQuery = ''}
+					onClear={() => {
+						searchQuery = '';
+						loadInitialData();
+					}}
 				/>
 			</div>
 		</div>
@@ -506,62 +579,143 @@
 
 	<!-- Main Content -->
 	<main class="container mx-auto px-4 py-6">
-		<!-- News Aggregator Stats -->
-		<div class="mb-8">
-			<StatsDashboard stats={statsData()} />
-		</div>
-
-		<!-- Featured News -->
-		{#if featuredNews.length > 0}
-			<section class="mb-12">
-				<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
-					<Star size={24} class="text-warning-600" />
-					Featured Stories
-				</h2>
-				
-				<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-					{#each featuredNews as article}
-						<NewsCard 
-							{article}
-							variant="featured"
-							onClick={handleArticleClick}
-							onBookmark={handleArticleBookmark}
-							onShare={handleArticleShare}
-							onLike={handleArticleLike}
-						/>
-					{/each}
+		{#if error}
+			<div class="bg-error-50 dark:bg-error-900/20 border border-error-200 dark:border-error-800 rounded-lg p-4 mb-6">
+				<div class="flex items-center gap-2">
+					<AlertCircle size={20} class="text-error-600" />
+					<div>
+						<h3 class="font-semibold text-error-800 dark:text-error-200">Error Loading News</h3>
+						<p class="text-sm text-error-600 dark:text-error-400">{error}</p>
+					</div>
 				</div>
-			</section>
+				<button 
+					class="btn btn-sm variant-filled-error mt-3"
+					onclick={() => {
+						error = null;
+						loadInitialData();
+					}}
+				>
+					Try Again
+				</button>
+			</div>
 		{/if}
 
-		<!-- Regular News -->
-		<section>
-			<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
-				<Clock size={24} class="text-primary-600" />
-				Latest from All Sources
-			</h2>
-			
-			<div class="grid grid-cols-1 {viewMode === 'grid' ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-1'} gap-6">
-				{#each sortedNews as article}
-					<NewsCard 
-						{article}
-						variant={viewMode === 'list' ? 'compact' : 'regular'}
-						onClick={handleArticleClick}
-						onBookmark={handleArticleBookmark}
-						onShare={handleArticleShare}
-						onLike={handleArticleLike}
-					/>
-				{/each}
+		{#if isLoading && articles.length === 0}
+			<div class="flex items-center justify-center py-12">
+				<div class="text-center">
+					<Loader2 size={48} class="animate-spin text-primary-600 mb-4" />
+					<p class="text-surface-600 dark:text-surface-400">Loading latest news...</p>
+				</div>
 			</div>
-		</section>
+		{:else}
+			<!-- News Aggregator Stats -->
+			{#if statsItems().length > 0}
+				<div class="mb-8">
+					<StatsDashboard stats={statsItems()} />
+				</div>
+			{/if}
 
-		<!-- Load More -->
-		<div class="flex justify-center mt-12">
-			<button class="btn variant-filled-primary">
-				Load More Stories
-				<ChevronRight size={16} class="ml-2" />
-			</button>
-		</div>
+			<!-- Trending Topics -->
+			{#if trendingTopics.length > 0}
+				<div class="mb-8">
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="text-xl font-bold flex items-center gap-2">
+							<TrendingUp size={20} class="text-primary-600" />
+							Trending Topics
+						</h2>
+						<button 
+							class="text-sm text-primary-600 hover:text-primary-700"
+							onclick={() => showTrendingTopics = !showTrendingTopics}
+						>
+							{showTrendingTopics ? 'Show Less' : 'Show More'}
+						</button>
+					</div>
+					
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						{#each trendingTopics.slice(0, showTrendingTopics ? 6 : 3) as topic}
+							<button 
+								class="card bg-surface-100 dark:bg-surface-800 p-4 hover:shadow-lg transition-all duration-200 hover:scale-105 text-left"
+								onclick={() => handleTrendingTopicClick(topic.topic)}
+							>
+								<div class="flex items-center justify-between mb-2">
+									<h3 class="font-semibold text-sm">#{topic.topic}</h3>
+									<span class="text-xs text-success-600 font-medium">{topic.change}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-xs text-surface-500">{formatViews(topic.count)} mentions</span>
+									<div class="w-16 h-1 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
+										<div class="h-full bg-primary-500 rounded-full" style="width: {Math.min((topic.count / 20000) * 100, 100)}%"></div>
+									</div>
+								</div>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Featured News -->
+			{#if featuredNews().length > 0}
+				<section class="mb-12">
+					<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+						<Star size={24} class="text-warning-600" />
+						Featured Stories
+					</h2>
+					
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						{#each featuredNews() as article}
+							<NewsCard 
+								{article}
+								variant="featured"
+								onClick={handleArticleClick}
+								onBookmark={handleArticleBookmark}
+								onShare={handleArticleShare}
+								onLike={handleArticleLike}
+							/>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			<!-- Regular News -->
+			<section>
+				<h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+					<Clock size={24} class="text-primary-600" />
+					Latest from All Sources
+				</h2>
+				
+				{#if sortedNews().length > 0}
+								<div class="grid grid-cols-1 {viewMode === 'grid' ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-1'} gap-6">
+				{#each sortedNews() as article}
+							<NewsCard 
+								{article}
+								variant={viewMode === 'list' ? 'compact' : 'regular'}
+								onClick={handleArticleClick}
+								onBookmark={handleArticleBookmark}
+								onShare={handleArticleShare}
+								onLike={handleArticleLike}
+							/>
+						{/each}
+					</div>
+				{:else}
+					<div class="text-center py-12">
+						<p class="text-surface-600 dark:text-surface-400">No articles found matching your criteria.</p>
+					</div>
+				{/if}
+			</section>
+
+			<!-- Load More -->
+			{#if hasMore && !isLoading}
+				<div class="flex justify-center mt-12">
+					<button 
+						class="btn variant-filled-primary"
+						onclick={loadMoreArticles}
+					>
+						Load More Stories
+						<ChevronRight size={16} class="ml-2" />
+					</button>
+				</div>
+			{/if}
+		{/if}
 	</main>
 
 	<!-- Enhanced Footer -->
@@ -590,21 +744,29 @@
 				<div>
 					<h4 class="font-semibold mb-4">Categories</h4>
 					<ul class="space-y-2 text-sm">
-						<li><a href="#" class="hover:text-primary-600 transition-colors">Politics</a></li>
-						<li><a href="#" class="hover:text-primary-600 transition-colors">Technology</a></li>
-						<li><a href="#" class="hover:text-primary-600 transition-colors">Sports</a></li>
-						<li><a href="#" class="hover:text-primary-600 transition-colors">Health</a></li>
-						<li><a href="#" class="hover:text-primary-600 transition-colors">Environment</a></li>
+						{#each categories.slice(0, 5) as category}
+							<li>
+								<button 
+									class="hover:text-primary-600 transition-colors"
+									onclick={() => {
+										selectedCategory = category;
+										loadInitialData();
+									}}
+								>
+									{category}
+								</button>
+							</li>
+						{/each}
 					</ul>
 				</div>
 				<div>
 					<h4 class="font-semibold mb-4">Sources</h4>
 					<ul class="space-y-2 text-sm">
-						{#each newsSources.slice(0, 5) as source}
+						{#each sources.slice(0, 5) as source}
 							<li>
 								<button 
 									class="flex items-center gap-2 hover:text-primary-600 transition-colors"
-									onclick={() => navigateToSource(source)}
+									onclick={() => goto(`/source/${source.id}`)}
 								>
 									<img src={source.logo} alt={source.name} class="w-4 h-4 rounded-full" />
 									{source.name}

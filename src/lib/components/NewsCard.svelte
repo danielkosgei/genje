@@ -137,30 +137,30 @@
 >
 	<div class="relative {variant === 'list' ? 'w-48 flex-shrink-0' : ''}">
 		<img 
-			src={article.urlToImage} 
-			alt={article.title}
+			src={article.urlToImage || '/favicon.svg'} 
+			alt={article.title || 'Article image'}
 			class="w-full {variant === 'list' ? 'h-32' : variant === 'featured' ? 'h-64' : 'h-48'} object-cover transition-transform duration-300 hover:scale-105"
 			loading="lazy"
 		/>
 		<div class="absolute top-3 left-3 flex gap-2">
 			<span class="badge variant-filled-primary text-xs font-medium">
-				{article.category}
+				{article.category || 'General'}
 			</span>
 			{#if variant === 'featured'}
 				<span class="badge variant-filled-warning text-xs">
 					Featured
 				</span>
 			{/if}
-			<span class="text-xs {getSentimentColor(article.sentiment)} bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
-				{article.sentiment}
+			<span class="text-xs {getSentimentColor(article.sentiment || 'neutral')} bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
+				{article.sentiment || 'neutral'}
 			</span>
 		</div>
 		{#if variant === 'featured'}
 			<div class="absolute top-4 right-4">
 				<div class="flex items-center gap-2 bg-surface-900/80 backdrop-blur-sm rounded-full px-3 py-1">
-					<img src={article.source.logo} alt={article.source.name} class="w-4 h-4 rounded-full" />
-					<span class="text-white text-xs font-medium">{article.source.name}</span>
-					{#if article.source.isVerified}
+					<img src={article.source?.logo || '/favicon.svg'} alt={article.source?.name || 'Source'} class="w-4 h-4 rounded-full" />
+					<span class="text-white text-xs font-medium">{article.source?.name || 'Unknown Source'}</span>
+					{#if article.source?.isVerified}
 						<Star size={12} class="text-warning-400" />
 					{/if}
 				</div>
@@ -175,27 +175,27 @@
 					class="flex items-center gap-2 hover:text-primary-600 transition-colors"
 					onclick={(e) => { e.stopPropagation(); }}
 				>
-					<img src={article.source.logo} alt={article.source.name} class="w-4 h-4 rounded-full" />
-					<span class="text-sm font-medium">{article.source.name}</span>
-					{#if article.source.isVerified}
+					<img src={article.source?.logo || '/favicon.svg'} alt={article.source?.name || 'Source'} class="w-4 h-4 rounded-full" />
+					<span class="text-sm font-medium">{article.source?.name || 'Unknown Source'}</span>
+					{#if article.source?.isVerified}
 						<Star size={12} class="text-warning-400" />
 					{/if}
 				</button>
-				<span class="text-xs {getTrustScoreColor(article.source.trustScore)} font-medium">
-					{article.source.trustScore}%
+				<span class="text-xs {getTrustScoreColor(article.source?.trustScore || 0)} font-medium">
+					{article.source?.trustScore || 0}%
 				</span>
 			</div>
 		{/if}
 		
 		<h3 class="text-lg font-bold mb-2 line-clamp-2">
-			{article.title}
+			{article.title || 'Untitled'}
 		</h3>
 		<p class="text-surface-600 dark:text-surface-400 mb-3 line-clamp-2 text-sm">
-			{article.description}
+			{article.description || 'No description available'}
 		</p>
 		
 		<div class="flex flex-wrap gap-1 mb-3">
-			{#each article.tags.slice(0, 2) as tag}
+			{#each (article.tags || []).slice(0, 2) as tag}
 				<span class="badge variant-ghost-surface text-xs">#{tag}</span>
 			{/each}
 		</div>
@@ -204,13 +204,13 @@
 			<div class="flex items-center space-x-3">
 				<span class="flex items-center gap-1">
 					<Clock size={12} />
-					{formatDate(article.publishedAt)}
+					{formatDate(article.publishedAt || new Date().toISOString())}
 				</span>
 				<span class="flex items-center gap-1">
 					<MapPin size={12} />
-					{article.country}
+					{article.country || 'Unknown'}
 				</span>
-				<span>{article.readTime}</span>
+				<span>{article.readTime || '1 min read'}</span>
 			</div>
 			<button 
 				class="btn btn-sm variant-ghost-surface text-xs"
@@ -225,15 +225,15 @@
 			<div class="flex items-center space-x-3 text-xs text-surface-500">
 				<span class="flex items-center gap-1">
 					<Eye size={12} />
-					{formatViews(article.views)}
+					{formatViews(article.views || 0)}
 				</span>
 				<span class="flex items-center gap-1">
 					<Heart size={12} class={isLiked ? 'text-error-500 fill-current' : ''} />
-					{article.likes}
+					{article.likes || 0}
 				</span>
 				<span class="flex items-center gap-1">
 					<MessageCircle size={12} />
-					{article.comments}
+					{article.comments || 0}
 				</span>
 			</div>
 			{#if showActions}
