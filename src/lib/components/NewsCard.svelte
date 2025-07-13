@@ -141,19 +141,6 @@
 			class="w-full {variant === 'list' ? 'h-32' : variant === 'featured' ? 'h-64' : 'h-48'} object-cover transition-transform duration-300 hover:scale-105"
 			loading="lazy"
 		/>
-		<div class="absolute top-3 left-3 flex gap-2">
-			<span class="badge variant-filled-primary text-xs font-medium">
-				{article.category || 'General'}
-			</span>
-			{#if variant === 'featured'}
-				<span class="badge variant-filled-warning text-xs">
-					Featured
-				</span>
-			{/if}
-			<span class="text-xs {getSentimentColor(article.sentiment || 'neutral')} bg-surface-900/80 backdrop-blur-sm rounded px-2 py-1 capitalize font-medium">
-				{article.sentiment || 'neutral'}
-			</span>
-		</div>
 		{#if variant === 'featured'}
 			<div class="absolute top-4 right-4">
 				<div class="flex items-center gap-2 bg-surface-900/80 backdrop-blur-sm rounded-full px-3 py-1">
@@ -174,6 +161,21 @@
 				</button>
 			</div>
 		{/if}
+		
+		<!-- Badges Section -->
+		<div class="flex flex-wrap gap-2 mb-3">
+			<span class="badge variant-filled-primary text-xs font-medium">
+				{article.category || 'General'}
+			</span>
+			{#if variant === 'featured'}
+				<span class="badge variant-filled-warning text-xs">
+					Featured
+				</span>
+			{/if}
+			<span class="badge variant-ghost-surface text-xs capitalize font-medium {getSentimentColor(article.sentiment || 'neutral')}">
+				{article.sentiment || 'neutral'}
+			</span>
+		</div>
 		
 		<h3 class="text-lg font-bold mb-2 line-clamp-2">
 			{article.title || 'Untitled'}
