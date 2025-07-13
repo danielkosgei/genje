@@ -47,12 +47,10 @@ export interface ApiResponse<T> {
 }
 
 export interface StatsData {
-	totalArticles: number;
-	totalSources: number;
-	totalCategories: number;
-	articlesLastHour: number;
-	sourcesActive: number;
-	categoriesActive: number;
+	total_articles: number;
+	total_sources: number;
+	categories: number;
+	last_updated: string;
 }
 
 export interface TrendingTopic {

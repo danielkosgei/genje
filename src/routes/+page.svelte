@@ -188,28 +188,28 @@
 			{
 				icon: Rss,
 				label: 'Total Articles',
-				value: stats.totalArticles,
+				value: stats.total_articles || 0,
 				color: 'text-primary-600',
 				bgColor: 'bg-primary-500'
 			},
 			{
 				icon: Globe,
 				label: 'Active Sources',
-				value: stats.sourcesActive,
+				value: stats.total_sources || 0,
 				color: 'text-success-600',
 				bgColor: 'bg-success-500'
 			},
 			{
 				icon: TrendingUp,
 				label: 'Categories',
-				value: stats.totalCategories,
+				value: stats.categories || 0,
 				color: 'text-warning-600',
 				bgColor: 'bg-warning-500'
 			},
 			{
 				icon: Clock,
-				label: 'Last Hour',
-				value: stats.articlesLastHour,
+				label: 'Last Updated',
+				value: stats.last_updated ? new Date(stats.last_updated).toLocaleDateString() : 'N/A',
 				color: 'text-error-600',
 				bgColor: 'bg-error-500'
 			}
