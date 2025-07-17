@@ -265,7 +265,7 @@
 				<SocialMetaTags
 					title={article.title || "Genje News Article"}
 					description={article.summary || article.content?.replace(/<[^>]*>/g, '').substring(0, 160) || "Read this interesting article on Genje News"}
-					imageUrl={article.image_url || `${window.location.origin}/favicon.svg`}
+					imageUrl={article.image_url && article.image_url.startsWith('http') ? article.image_url : 'https://picsum.photos/1200/630'}
 					url={window.location.href}
 					type="article"
 					siteName="Genje News"

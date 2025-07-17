@@ -21,6 +21,23 @@
 		twitterCard = 'summary_large_image',
 		twitterSite = '@genjenews'
 	} = $props();
+	
+	// Ensure imageUrl is an absolute URL
+	if (imageUrl && !imageUrl.startsWith('http')) {
+		// If it's a relative URL, convert to absolute
+		if (imageUrl.startsWith('/')) {
+			// If it starts with a slash, it's relative to the domain root
+			imageUrl = `${window.location.origin}${imageUrl}`;
+		} else {
+			// Otherwise, it's relative to the current path
+			imageUrl = `${window.location.origin}/${imageUrl}`;
+		}
+	}
+	
+	// Ensure URL is absolute
+	if (url && !url.startsWith('http')) {
+		url = `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+	}
 </script>
 
 <!-- Open Graph Meta Tags -->

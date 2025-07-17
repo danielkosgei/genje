@@ -145,9 +145,9 @@
 
 	// Generate a shareable URL for the article
 	function getShareableUrl(): string {
-		// Always use our website URL, not the source website
-		// This ensures users are directed to our platform
-		return `${window.location.origin}/article/${article.id}`;
+		// Use the preview URL for better social media sharing
+		// This ensures the link will have proper metadata when shared
+		return `${window.location.origin}/preview/${article.id}`;
 	}
 	
 	// Handle copying the link to clipboard
