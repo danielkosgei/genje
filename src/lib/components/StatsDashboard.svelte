@@ -54,10 +54,11 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 	{#each stats as stat, index}
+		{@const IconComponent = stat.icon}
 		<div class="card bg-surface-100 dark:bg-surface-800 p-4 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer group">
 			<div class="flex items-center gap-3">
 				<div class="w-12 h-12 {stat.bgColor} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-					<svelte:component this={stat.icon} size={24} class="text-white" />
+					<IconComponent size={24} class="text-white" />
 				</div>
 				<div class="flex-1">
 					<p class="text-sm text-surface-600 dark:text-surface-400 group-hover:text-surface-700 dark:group-hover:text-surface-300 transition-colors">
