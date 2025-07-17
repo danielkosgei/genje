@@ -67,6 +67,32 @@
 		if (diffInHours < 48) return 'Yesterday';
 		return date.toLocaleDateString();
 	}
+	
+	// Extract an engaging snippet from the content
+	function getEngagingSnippet(article: NewsArticle): string {
+		// If there's no content, fall back to summary
+		if (!article.content) return article.summary || 'No description available';
+		
+		// Remove HTML tags to get plain text
+		const plainText = article.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+		
+		// Find an interesting sentence that's not too short
+		const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 30);
+		
+		// If we have interesting sentences, use the first one
+		if (sentences.length > 0) {
+			// Get the first interesting sentence and add ellipsis
+			return sentences[0].trim() + '...';
+		}
+		
+		// If no good sentences, take the first 120 characters
+		if (plainText.length > 120) {
+			return plainText.substring(0, 120).trim() + '...';
+		}
+		
+		// Fall back to the plain text or summary
+		return plainText || article.summary || 'No description available';
+	}
 
 	function formatViews(views: number): string {
 		if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
@@ -180,8 +206,8 @@
 		<h3 class="text-lg font-bold mb-2 line-clamp-2">
 			{article.title || 'Untitled'}
 		</h3>
-		<p class="text-surface-600 dark:text-surface-400 mb-3 line-clamp-2 text-sm">
-			{article.summary || article.content || 'No description available'}
+		<p class="text-surface-600 dark:text-surface-400 mb-3 line-clamp-3 text-sm">
+			{getEngagingSnippet(article)}
 		</p>
 		
 		<div class="flex flex-wrap gap-1 mb-3">
