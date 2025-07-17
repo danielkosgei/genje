@@ -3,6 +3,28 @@
   
   // Destructure the data from the server
   const { article } = data;
+  
+  // State for summary visibility
+  let showSummary = false;
+  let isGeneratingSummary = false;
+  
+  // Function to handle summary generation
+  async function generateSummary() {
+    if (article.summary) {
+      // If we already have a summary, just show it
+      showSummary = true;
+    } else {
+      // Otherwise, show loading state and potentially fetch it
+      isGeneratingSummary = true;
+      
+      // In a real implementation, you might fetch the summary here
+      // For now, we'll just simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      isGeneratingSummary = false;
+      showSummary = true;
+    }
+  }
 </script>
 
 <div class="article-container">
@@ -29,11 +51,33 @@
     <img src={article.image_url} alt={article.title} class="article-image">
   {/if}
   
-  {#if article.summary}
-    <div class="summary">
-      {article.summary}
-    </div>
-  {/if}
+  <!-- Summary button and display -->
+  <div class="summary-container">
+    {#if !showSummary}
+      <button 
+        class="btn variant-filled-primary" 
+        on:click={generateSummary}
+        disabled={isGeneratingSummary}
+      >
+        {#if isGeneratingSummary}
+          Generating Summary...
+        {:else}
+          Generate Summary
+        {/if}
+      </button>
+    {:else if article.summary}
+      <div class="summary">
+        <h3>Summary</h3>
+        <p>{article.summary}</p>
+        <button 
+          class="btn variant-ghost-surface btn-sm mt-2" 
+          on:click={() => showSummary = false}
+        >
+          Hide Summary
+        </button>
+      </div>
+    {/if}
+  </div>
   
   {#if article.content}
     <div class="content">
