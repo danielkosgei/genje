@@ -17,6 +17,7 @@
 		AlertCircle
 	} from '@lucide/svelte';
 	import NewsCard from '$lib/components/NewsCard.svelte';
+	import SocialMetaTags from '$lib/components/SocialMetaTags.svelte';
 	import genjeAPI, { type NewsArticle } from '$lib/api.js';
 
 	// State management
@@ -260,6 +261,16 @@
 					</button>
 				</div>
 			{:else if article}
+				<!-- Social Media Meta Tags for URL previews -->
+				<SocialMetaTags
+					title={article.title || "Genje News Article"}
+					description={article.summary || article.content?.replace(/<[^>]*>/g, '').substring(0, 160) || "Read this interesting article on Genje News"}
+					imageUrl={article.image_url || `${window.location.origin}/favicon.svg`}
+					url={window.location.href}
+					type="article"
+					siteName="Genje News"
+				/>
+				
 				<!-- Article Meta -->
 				<div class="mb-8">
 					<div class="flex items-center gap-4 mb-4">
