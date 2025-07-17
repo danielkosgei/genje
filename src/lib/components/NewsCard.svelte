@@ -145,8 +145,9 @@
 
 	// Generate a shareable URL for the article
 	function getShareableUrl(): string {
-		// Link directly to the article page
-		return `${window.location.origin}/article/${article.id}`;
+		// Use a direct link to the article with UTM parameters for tracking
+		// This ensures proper server-side rendering of metadata for social media platforms
+		return `${window.location.origin}/article/${article.id}?utm_source=share&utm_medium=social`;
 	}
 	
 	// Handle copying the link to clipboard

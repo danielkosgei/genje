@@ -1,20 +1,36 @@
 import { json } from '@sveltejs/kit';
+import genjeAPI from '$lib/api';
 
-/**
- * This endpoint generates link preview data for social media platforms
- * @param {Object} event - The request event
- */
-export async function GET({ url }) {
+export async function GET({ url, params }) {
   const articleId = url.searchParams.get('id');
-  const title = url.searchParams.get('title') || 'Genje News Article';
-  const description = url.searchParams.get('description') || 'Read this interesting article on Genje News';
-  const imageUrl = url.searchParams.get('image') || 'https://picsum.photos/1200/630';
-  
-  // Return the preview data
-  return json({
-    title,
-    description,
-    imageUrl,
-    url: `${url.origin}/article/${articleId}`
-  });
+  try {
+    // Try to fetch the article data
+    const response = await genjeAPI.getArticleById(articleId);
+    let article;
+    if (response.success) {
+      article = response.data;
+    } else {
+      // Fallback data if article not found
+      article = {
+        id: articleId,
+        title: `Article #${articleId}`,
+        summary: `Read this interesting article on Genje News`,
+        image_url: `https://picsum.photos/seed/${articleId}/1200/630`
+      };
+    }
+    // Return the preview data
+    return json({
+      title: article.title,
+      description: article.summary,
+      image: article.image_url,
+      url: `${url.origin}/article/${articleId}`
+    });
+  } catch (error) {
+    return json({
+      title: "Genje News Article",
+      description: "Read this interesting article on Genje News",
+      image: `https://picsum.photos/seed/${articleId}/1200/630`,
+      url: `${url.origin}/article/${articleId}`
+    });
+  }
 }
