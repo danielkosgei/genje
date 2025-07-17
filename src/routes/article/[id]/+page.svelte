@@ -56,8 +56,34 @@
 	
 	// Initialize description and imageUrl based on article
 	$effect(() => {
-		description = article?.summary || "";
-		imageUrl = article?.image_url || `https://picsum.photos/seed/${articleId}/1200/630`;
+		// Create a rich description for link previews
+		if (article?.summary) {
+			description = article.summary;
+		} else if (article?.content) {
+			// Extract text from HTML content and limit to 200 characters
+			description = article.content
+				.replace(/<[^>]*>/g, ' ')  // Remove HTML tags
+				.replace(/\s+/g, ' ')      // Replace multiple spaces with single space
+				.trim()
+				.substring(0, 200) + '...';
+		} else {
+			description = `Read this interesting article on Genje News`;
+		}
+		
+		// Ensure image URL is absolute and high quality for previews
+		if (article?.image_url) {
+			// If image URL is relative, make it absolute
+			if (article.image_url.startsWith('/')) {
+				imageUrl = `${window.location.origin}${article.image_url}`;
+			} else if (!article.image_url.startsWith('http')) {
+				imageUrl = `${window.location.origin}/${article.image_url}`;
+			} else {
+				imageUrl = article.image_url;
+			}
+		} else {
+			// Use a high-quality placeholder image with the article ID as seed
+			imageUrl = `https://picsum.photos/seed/${articleId}/1200/630`;
+		}
 	});
 	
 	// Load article data directly if not provided by server
@@ -108,28 +134,7 @@
 		}
 	}
 
-	// Process article data when it's available
-	$effect(() => {
-		// Extract a clean description from content if summary is not available
-		if (article) {
-			description = article.summary || "";
-			if (!description && article.content) {
-				// Remove HTML tags and limit to 160 characters
-				description = article.content.replace(/<[^>]*>/g, ' ')
-					.replace(/\s+/g, ' ')
-					.trim()
-					.substring(0, 160) + '...';
-			}
-			
-			// Ensure image URL is absolute
-			imageUrl = article.image_url || "";
-			if (imageUrl && !imageUrl.startsWith('http')) {
-				imageUrl = `${$page.url.origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-			} else if (!imageUrl) {
-				imageUrl = `https://picsum.photos/seed/${article.id}/1200/630`;
-			}
-		}
-	});
+	// This duplicate effect block has been removed to avoid confusion
 
 	// Load related articles
 	async function loadRelatedArticles() {
