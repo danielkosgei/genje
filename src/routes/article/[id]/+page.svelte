@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { 
@@ -17,13 +16,17 @@
 		AlertCircle
 	} from '@lucide/svelte';
 	import NewsCard from '$lib/components/NewsCard.svelte';
-	import SocialMetaTags from '$lib/components/SocialMetaTags.svelte';
 	import genjeAPI, { type NewsArticle } from '$lib/api.js';
 
+	/** @type {import('./$types').PageData} */
+	export let data;
+	
+	// Get the article from server-side data
+	let article = $state(data.article);
+	
 	// State management
-	let article = $state<NewsArticle | null>(null);
 	let relatedArticles = $state<NewsArticle[]>([]);
-	let isLoading = $state(true);
+	let isLoading = $state(false);
 	let error = $state<string | null>(null);
 	let isLiked = $state(false);
 	let isBookmarked = $state(false);
@@ -34,99 +37,47 @@
 
 	// Get article ID from URL params
 	const articleId = $derived($page.params.id);
+	
+	// Extract a clean description from content if summary is not available
+	let description = article.summary;
+	if (!description && article.content) {
+		// Remove HTML tags and limit to 160 characters
+		description = article.content.replace(/<[^>]*>/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim()
+			.substring(0, 160) + '...';
+	}
+	
+	// Ensure image URL is absolute
+	let imageUrl = article.image_url;
+	if (imageUrl && !imageUrl.startsWith('http')) {
+		imageUrl = `${$page.url.origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+	} else if (!imageUrl) {
+		imageUrl = `https://picsum.photos/seed/${article.id}/1200/630`;
+	}
 
-	// Load article data
-	async function loadArticle() {
-		if (!articleId) return;
+	// Load related articles
+	async function loadRelatedArticles() {
+		if (!article || !article.category) return;
 		
 		try {
 			isLoading = true;
-			error = null;
-
+			
 			try {
-				// Try to load from API first
-				const [articleResponse, relatedResponse] = await Promise.all([
-					genjeAPI.getArticleById(articleId),
-					genjeAPI.getArticles({ limit: 4 })
-				]);
-
-				if (articleResponse.success) {
-					article = articleResponse.data;
-					
-					// Load related articles from the same category or source
-					if (article && article.category) {
-						const currentArticle = article;
-						try {
-							const categoryResponse = await genjeAPI.getArticlesByCategory(currentArticle.category, { limit: 2 });
-							if (categoryResponse.success) {
-								// Filter out the current article and take first 2
-								relatedArticles = categoryResponse.data.filter(a => a.id !== currentArticle.id).slice(0, 2);
-							}
-						} catch (categoryErr) {
-							console.error('Error loading category articles:', categoryErr);
-							// Continue without related articles
-						}
-					}
-				} else {
-					// If API fails, use mock data
-					useMockData();
+				const categoryResponse = await genjeAPI.getArticlesByCategory(article.category, { limit: 2 });
+				if (categoryResponse.success) {
+					// Filter out the current article and take first 2
+					relatedArticles = categoryResponse.data.filter(a => a.id !== article.id).slice(0, 2);
 				}
-			} catch (apiErr) {
-				console.error('API Error:', apiErr);
-				// If API fails, use mock data
-				useMockData();
+			} catch (categoryErr) {
+				console.error('Error loading category articles:', categoryErr);
+				// Continue without related articles
 			}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load article';
-			console.error('Error loading article:', err);
+			console.error('Error loading related articles:', err);
 		} finally {
 			isLoading = false;
 		}
-	}
-	
-	// Use mock data when API is not available
-	function useMockData() {
-		article = {
-			id: parseInt(articleId),
-			title: "Sample Article Title",
-			content: "<p>This is a sample article content. The API might not be available at the moment.</p><p>This is a placeholder content to demonstrate the article page functionality.</p>",
-			summary: "This is a sample summary for the article.",
-			author: "John Doe",
-			source: "Sample News",
-			published_at: new Date().toISOString(),
-			category: "Technology",
-			image_url: "https://picsum.photos/800/400",
-			views: 1250,
-			likes: 42,
-			comments: 7,
-			tags: ["sample", "demo", "article"]
-		};
-		
-		// Process the content to remove any img tags to avoid duplicate images
-		if (article.content) {
-			article.content = article.content.replace(/<img[^>]*>/g, '');
-		}
-		
-		relatedArticles = [
-			{
-				id: 2,
-				title: "Related Article 1",
-				summary: "This is a related article summary.",
-				source: "Sample News",
-				published_at: new Date().toISOString(),
-				category: "Technology",
-				image_url: "https://picsum.photos/800/400?random=1"
-			},
-			{
-				id: 3,
-				title: "Related Article 2",
-				summary: "Another related article summary.",
-				source: "Sample News",
-				published_at: new Date().toISOString(),
-				category: "Technology",
-				image_url: "https://picsum.photos/800/400?random=2"
-			}
-		];
 	}
 
 	// Utility functions
@@ -186,12 +137,50 @@
 			goto(`/article/${relatedArticle.id}`);
 		}
 	}
-
-	// Load article only on the client side to avoid hydration mismatches
+	
+	// Load related articles when component mounts
+	import { onMount } from 'svelte';
 	onMount(() => {
-		loadArticle();
+		loadRelatedArticles();
 	});
 </script>
+
+<!-- Add metadata for social sharing at the top level -->
+<svelte:head>
+	<title>{article.title || "Genje News Article"}</title>
+	<meta name="description" content={description} />
+	
+	<!-- Open Graph / Facebook -->
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content={$page.url.href} />
+	<meta property="og:title" content={article.title || "Genje News Article"} />
+	<meta property="og:description" content={description} />
+	<meta property="og:image" content={imageUrl} />
+	<meta property="og:site_name" content="Genje News" />
+	
+	<!-- Twitter -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:site" content="@genjenews" />
+	<meta name="twitter:title" content={article.title || "Genje News Article"} />
+	<meta name="twitter:description" content={description} />
+	<meta name="twitter:image" content={imageUrl} />
+	
+	<!-- Additional Article Metadata -->
+	{#if article.published_at}
+		<meta property="article:published_time" content={article.published_at} />
+	{/if}
+	{#if article.author}
+		<meta property="article:author" content={article.author} />
+	{/if}
+	{#if article.category}
+		<meta property="article:section" content={article.category} />
+	{/if}
+	{#if article.tags && article.tags.length > 0}
+		{#each article.tags as tag}
+			<meta property="article:tag" content={tag} />
+		{/each}
+	{/if}
+</svelte:head>
 
 <div class="min-h-screen bg-surface-50 dark:bg-surface-900">
 	<!-- Article Header -->
@@ -255,7 +244,7 @@
 					</div>
 					<button 
 						class="btn variant-filled-error"
-						onclick={loadArticle}
+						onclick={loadRelatedArticles}
 					>
 						Try Again
 					</button>
