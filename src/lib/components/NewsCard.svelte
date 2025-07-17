@@ -8,7 +8,14 @@
 		ExternalLink, 
 		Star, 
 		Clock, 
-		MapPin 
+		MapPin,
+		Copy,
+		Twitter,
+		Facebook,
+		Linkedin,
+		Mail,
+		X,
+		Check
 	} from '@lucide/svelte';
 
 	interface NewsSource {
@@ -56,6 +63,8 @@
 	let isLiked = $state(false);
 	let isBookmarked = $state(false);
 	let isLoading = $state(false);
+	let showShareMenu = $state(false);
+	let shareUrl = $state('');
 
 	function formatDate(dateString: string): string {
 		const date = new Date(dateString);
@@ -134,13 +143,88 @@
 		isLoading = false;
 	}
 
+	// Generate a shareable URL for the article
+	function getShareableUrl(): string {
+		// Always use our website URL, not the source website
+		// This ensures users are directed to our platform
+		return `${window.location.origin}/article/${article.id}`;
+	}
+	
+	// Handle copying the link to clipboard
+	async function copyToClipboard() {
+		const url = getShareableUrl();
+		try {
+			await navigator.clipboard.writeText(url);
+			// Show success message
+			shareUrl = 'copied';
+			setTimeout(() => {
+				shareUrl = '';
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy:', err);
+		}
+	}
+	
+	// Share to social media platforms
+	function shareToSocial(platform: string) {
+		const url = encodeURIComponent(getShareableUrl());
+		const title = encodeURIComponent(article.title || 'Interesting article');
+		const text = encodeURIComponent(article.summary || getEngagingSnippet(article));
+		
+		let shareUrl = '';
+		
+		switch (platform) {
+			case 'twitter':
+				shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
+				break;
+			case 'facebook':
+				shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+				break;
+			case 'linkedin':
+				shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+				break;
+			case 'email':
+				shareUrl = `mailto:?subject=${title}&body=${text}%0A%0A${url}`;
+				break;
+		}
+		
+		if (shareUrl) {
+			window.open(shareUrl, '_blank', 'width=600,height=400');
+		}
+		
+		// Close the share menu after sharing
+		showShareMenu = false;
+	}
+	
+	// Handle share button click
 	async function handleShare(e: Event) {
 		e.stopPropagation();
-		isLoading = true;
-		onShare?.(article);
-		// Simulate API call
-		await new Promise(resolve => setTimeout(resolve, 300));
-		isLoading = false;
+		
+		// Use Web Share API if available
+		if (navigator.share) {
+			try {
+				await navigator.share({
+					title: article.title || 'Interesting article',
+					text: article.summary || getEngagingSnippet(article),
+					url: getShareableUrl()
+				});
+				onShare?.(article);
+			} catch (err) {
+				console.error('Error sharing:', err);
+				// Fall back to our custom share menu if Web Share API fails
+				showShareMenu = !showShareMenu;
+			}
+		} else {
+			// Use our custom share menu if Web Share API is not available
+			showShareMenu = !showShareMenu;
+		}
+	}
+	
+	// Close share menu when clicking outside
+	function handleClickOutside(e: MouseEvent) {
+		if (showShareMenu) {
+			showShareMenu = false;
+		}
 	}
 
 	function handleClick() {
@@ -264,13 +348,82 @@
 					>
 						<Bookmark size={14} class={isBookmarked ? 'fill-current' : ''} />
 					</button>
-					<button 
-						class="btn btn-sm variant-ghost-surface p-2" 
-						onclick={handleShare}
-						disabled={isLoading}
-					>
-						<Share2 size={14} />
-					</button>
+					<div class="relative">
+						<button 
+							class="btn btn-sm variant-ghost-surface p-2" 
+							onclick={handleShare}
+							disabled={isLoading}
+						>
+							<Share2 size={14} />
+						</button>
+						
+						<!-- Share Menu Popup -->
+						{#if showShareMenu}
+							<div 
+								class="absolute right-0 bottom-full mb-2 w-48 bg-surface-50 dark:bg-surface-800 rounded-lg shadow-lg border border-surface-200 dark:border-surface-700 z-50"
+								onclick={(e) => e.stopPropagation()}
+							>
+								<div class="p-2">
+									<div class="flex items-center justify-between p-2 border-b border-surface-200 dark:border-surface-700">
+										<span class="text-sm font-medium">Share Article</span>
+										<button 
+											class="text-surface-500 hover:text-surface-700"
+											onclick={() => showShareMenu = false}
+										>
+											<X size={14} />
+										</button>
+									</div>
+									
+									<!-- Copy Link -->
+									<button 
+										class="w-full flex items-center gap-2 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-left text-sm"
+										onclick={copyToClipboard}
+									>
+										{#if shareUrl === 'copied'}
+											<Check size={14} class="text-success-500" />
+											<span>Copied!</span>
+										{:else}
+											<Copy size={14} />
+											<span>Copy Link</span>
+										{/if}
+									</button>
+									
+									<!-- Social Media Sharing -->
+									<button 
+										class="w-full flex items-center gap-2 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-left text-sm"
+										onclick={() => shareToSocial('twitter')}
+									>
+										<Twitter size={14} class="text-blue-500" />
+										<span>Twitter</span>
+									</button>
+									
+									<button 
+										class="w-full flex items-center gap-2 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-left text-sm"
+										onclick={() => shareToSocial('facebook')}
+									>
+										<Facebook size={14} class="text-blue-600" />
+										<span>Facebook</span>
+									</button>
+									
+									<button 
+										class="w-full flex items-center gap-2 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-left text-sm"
+										onclick={() => shareToSocial('linkedin')}
+									>
+										<Linkedin size={14} class="text-blue-700" />
+										<span>LinkedIn</span>
+									</button>
+									
+									<button 
+										class="w-full flex items-center gap-2 p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded text-left text-sm"
+										onclick={() => shareToSocial('email')}
+									>
+										<Mail size={14} />
+										<span>Email</span>
+									</button>
+								</div>
+							</div>
+						{/if}
+					</div>
 					<button 
 						class="btn btn-sm variant-ghost-surface p-2" 
 						onclick={handleLike}
