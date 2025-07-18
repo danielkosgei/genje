@@ -5,6 +5,10 @@
     import { onMount } from 'svelte';
     import { Button } from '$lib/components/ui/button';
     import { stripHtml } from '$lib/utils/content';
+    import ArticleEngagement from '$lib/components/ArticleEngagement.svelte';
+    import type { PageData } from './$types';
+
+    let { data }: { data: PageData } = $props();
     
     let article = $state<NewsArticle | null>(null);
     let isLoading = $state(true);
@@ -239,6 +243,19 @@
                     {:else}
                         <p class="text-muted-foreground text-sm">Click the button above to generate an AI-powered summary of this article.</p>
                     {/if}
+                </div>
+
+                <!-- Engagement Section -->
+                <div id="comments" class="mb-8">
+                    <ArticleEngagement 
+                        articleId={article.id.toString()}
+                        user={data?.user}
+                        initialLikes={Math.floor(Math.random() * 100) + 10}
+                        initialBookmarked={false}
+                        initialUserLiked={false}
+                        showComments={true}
+                        compact={false}
+                    />
                 </div>
 
                 <!-- Action buttons -->
