@@ -1,7 +1,6 @@
 import type { NewsArticle, ArticlesResponse, NewsSource } from '$lib/types/news';
-import { PUBLIC_API_BASE_URL } from '$env/static/public';
 
-const API_BASE_URL = PUBLIC_API_BASE_URL || 'https://api.genje.co.ke';
+const API_BASE_URL = 'https://api.genje.co.ke';
 
 class NewsAPI {
 	private async fetchAPI<T>(endpoint: string): Promise<T> {
