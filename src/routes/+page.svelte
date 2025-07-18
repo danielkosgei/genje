@@ -24,7 +24,179 @@
 	let articles = $state<NewsArticle[]>([]);
 	let error = $state<string | null>(null);
 	let hasMore = $state(true);
-	let lastLoadedCount = $state(0);
+	let currentPage = $state(1);
+	let totalLoaded = $state(0);
+
+	function loadMockData() {
+		// Mock data for development when API is unavailable
+		const mockArticles: NewsArticle[] = [
+			{
+				id: 1,
+				title: "Kenya's Economy Shows Strong Growth in Q4 2024",
+				content: "Kenya's economy has demonstrated remarkable resilience with a 5.2% growth rate in the fourth quarter of 2024, driven by strong performance in agriculture and technology sectors...",
+				author: "Economic Reporter",
+				published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Business Daily",
+				url: "https://example.com/economy-growth",
+				image_url: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Kenya's economy grows 5.2% in Q4 2024, showing strong resilience."
+			},
+			{
+				id: 2,
+				title: "Nairobi Launches New Digital Payment System for Public Transport",
+				content: "The Nairobi County Government has officially launched a comprehensive digital payment system for all public transport vehicles, making commuting easier for millions of residents...",
+				author: "Transport Correspondent",
+				published_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "The Standard",
+				url: "https://example.com/digital-transport",
+				image_url: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Nairobi introduces digital payments for public transport."
+			},
+			{
+				id: 3,
+				title: "Kenyan Diaspora Contributes Record $4.2 Billion in Remittances",
+				content: "Kenyan diaspora communities worldwide have sent home a record-breaking $4.2 billion in remittances this year, supporting families and boosting the national economy...",
+				author: "Diaspora Reporter",
+				published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Nation Media",
+				url: "https://example.com/diaspora-remittances",
+				image_url: "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=800&h=400&fit=crop",
+				category: "diaspora" as const,
+				summary: "Record $4.2B in diaspora remittances supports Kenya's economy."
+			},
+			{
+				id: 4,
+				title: "Harambee Stars Qualify for AFCON 2025",
+				content: "Kenya's national football team, Harambee Stars, has secured qualification for the Africa Cup of Nations 2025 after a thrilling 2-1 victory over Tanzania in Nairobi...",
+				author: "Sports Writer",
+				published_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Sports Kenya",
+				url: "https://example.com/harambee-stars-afcon",
+				image_url: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Harambee Stars qualify for AFCON 2025 with victory over Tanzania."
+			},
+			{
+				id: 5,
+				title: "New University Campus Opens in Mombasa",
+				content: "A state-of-the-art university campus has opened in Mombasa, offering cutting-edge programs in marine science, logistics, and international trade...",
+				author: "Education Reporter",
+				published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Education News",
+				url: "https://example.com/mombasa-university",
+				image_url: "https://images.unsplash.com/photo-1562774053-701939374585?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "New university campus in Mombasa focuses on marine science and trade."
+			},
+			{
+				id: 6,
+				title: "Kenya Launches Green Energy Initiative",
+				content: "The government has launched an ambitious green energy initiative aimed at achieving 100% renewable energy by 2030, with major investments in solar and wind power...",
+				author: "Environment Correspondent",
+				published_at: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Green Kenya",
+				url: "https://example.com/green-energy",
+				image_url: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Kenya targets 100% renewable energy by 2030 with new initiative."
+			}
+		];
+
+		articles = mockArticles;
+		totalLoaded = mockArticles.length;
+		hasMore = true; // Allow loading more mock data
+		error = null;
+		console.log('Mock data loaded:', mockArticles.length, 'articles');
+	}
+
+	function loadMoreMockData() {
+		// Generate additional mock articles for infinite scroll testing
+		const additionalMockArticles: NewsArticle[] = [
+			{
+				id: totalLoaded + 1,
+				title: "Kenya Signs Major Trade Deal with European Union",
+				content: "Kenya has signed a comprehensive trade agreement with the European Union, opening new markets for Kenyan exports and creating thousands of jobs...",
+				author: "Trade Reporter",
+				published_at: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Trade Weekly",
+				url: "https://example.com/eu-trade-deal",
+				image_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Kenya-EU trade deal creates new export opportunities."
+			},
+			{
+				id: totalLoaded + 2,
+				title: "Mombasa Port Handles Record Cargo Volume",
+				content: "The Port of Mombasa has achieved a new milestone by handling over 1.5 million TEUs in a single month, demonstrating Kenya's growing role as a regional logistics hub...",
+				author: "Port Correspondent",
+				published_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Maritime News",
+				url: "https://example.com/mombasa-port-record",
+				image_url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Mombasa Port achieves record cargo handling milestone."
+			},
+			{
+				id: totalLoaded + 3,
+				title: "Kenyan Tech Startup Raises $50M in Series B Funding",
+				content: "A Nairobi-based fintech startup has successfully raised $50 million in Series B funding, marking one of the largest investment rounds in East Africa this year...",
+				author: "Tech Reporter",
+				published_at: new Date(Date.now() - 28 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Tech Africa",
+				url: "https://example.com/fintech-funding",
+				image_url: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Kenyan fintech raises $50M in major funding round."
+			},
+			{
+				id: totalLoaded + 4,
+				title: "New Wildlife Conservancy Opens in Maasai Mara",
+				content: "A new community-owned wildlife conservancy has been established in the Maasai Mara ecosystem, providing additional protection for endangered species...",
+				author: "Conservation Writer",
+				published_at: new Date(Date.now() - 32 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Wildlife Kenya",
+				url: "https://example.com/maasai-mara-conservancy",
+				image_url: "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "New Maasai Mara conservancy protects endangered wildlife."
+			},
+			{
+				id: totalLoaded + 5,
+				title: "Kenya's Coffee Exports Reach 10-Year High",
+				content: "Kenyan coffee exports have reached their highest level in a decade, with premium Arabica beans commanding top prices in international markets...",
+				author: "Agriculture Reporter",
+				published_at: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+				created_at: new Date().toISOString(),
+				source: "Farm Kenya",
+				url: "https://example.com/coffee-exports-high",
+				image_url: "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&h=400&fit=crop",
+				category: "news" as const,
+				summary: "Kenyan coffee exports hit 10-year high with premium prices."
+			}
+		];
+
+		articles = [...articles, ...additionalMockArticles];
+		totalLoaded = articles.length;
+		
+		// Simulate reaching end of data after a few loads
+		if (totalLoaded >= 20) {
+			hasMore = false;
+		}
+		
+		console.log('Additional mock data loaded:', additionalMockArticles.length, 'articles. Total:', totalLoaded);
+	}
 
 	async function loadArticles(append = false) {
 		try {
@@ -32,43 +204,109 @@
 				isLoading = true;
 				articles = [];
 				hasMore = true;
+				currentPage = 1;
+				totalLoaded = 0;
 			} else {
 				isLoadingMore = true;
+				currentPage++;
 			}
 			error = null;
 
 			let response;
-			const limit = append ? 10 : 20; // Load fewer items when appending
+			const limit = 20;
 
+			// Use different strategies based on what we're loading
 			if (searchQuery.trim()) {
-				response = await newsAPI.searchArticles(searchQuery.trim(), limit);
+				// For search, we'll load progressively larger batches
+				const searchLimit = limit * currentPage;
+				response = await newsAPI.searchArticles(searchQuery.trim(), searchLimit);
 			} else if (selectedCategory !== 'all') {
-				response = await newsAPI.getArticlesByCategory(selectedCategory, limit);
+				// For categories, we'll load progressively larger batches
+				const categoryLimit = limit * currentPage;
+				response = await newsAPI.getArticlesByCategory(selectedCategory, categoryLimit);
 			} else {
-				response = await newsAPI.getRecentArticles(limit);
+				// For general articles, use proper pagination
+				response = await newsAPI.getArticles(currentPage, limit);
 			}
 
-			if (response.success && response.data) {
+			console.log('API Response:', response);
+
+			if (response && response.success && response.data) {
 				const newArticles = response.data;
-				lastLoadedCount = newArticles.length;
 
 				if (append) {
-					// Filter out duplicates when appending
-					const existingIds = new Set(articles.map((a) => a.id));
-					const uniqueNewArticles = newArticles.filter((a) => !existingIds.has(a.id));
-					articles = [...articles, ...uniqueNewArticles];
-					hasMore = uniqueNewArticles.length > 0 && newArticles.length === limit;
+					if (searchQuery.trim() || selectedCategory !== 'all') {
+						// For search/category, we get all results and need to extract new ones
+						const existingIds = new Set(articles.map((a) => a.id));
+						const uniqueNewArticles = newArticles.filter((a) => !existingIds.has(a.id));
+						
+						if (uniqueNewArticles.length === 0) {
+							hasMore = false;
+							currentPage--; // Revert page increment
+						} else {
+							// Add only the new articles that weren't already loaded
+							const articlesToAdd = uniqueNewArticles.slice(-limit); // Get the last 'limit' articles
+							articles = [...articles, ...articlesToAdd];
+							totalLoaded = articles.length;
+							hasMore = newArticles.length >= limit * currentPage;
+						}
+					} else {
+						// For general articles, just append the new page
+						if (newArticles.length === 0) {
+							hasMore = false;
+							currentPage--; // Revert page increment
+						} else {
+							articles = [...articles, ...newArticles];
+							totalLoaded = articles.length;
+							hasMore = newArticles.length === limit;
+						}
+					}
 				} else {
+					// Initial load
 					articles = newArticles;
-					hasMore = newArticles.length === limit;
+					totalLoaded = newArticles.length;
+					hasMore = newArticles.length >= limit;
 				}
+
+				console.log('Articles loaded:', {
+					append,
+					newCount: newArticles.length,
+					totalArticles: articles.length,
+					hasMore,
+					currentPage,
+					searchQuery: searchQuery || 'none',
+					category: selectedCategory
+				});
 			} else {
 				throw new Error('Invalid API response');
 			}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load articles';
-			console.error('Error loading articles:', err);
-			hasMore = false;
+			console.error('API Error Details:', err);
+			console.error('Response was:', response);
+			
+			// Check if it's a network error or API error
+			if (err instanceof Error && err.message.includes('fetch')) {
+				error = 'Unable to connect to news API. Please check your internet connection.';
+			} else if (err instanceof Error && err.message.includes('API Error:')) {
+				error = `News API Error: ${err.message}`;
+			} else {
+				error = err instanceof Error ? err.message : 'Failed to load articles';
+			}
+			
+			// Load mock data as fallback for development
+			if (!append && articles.length === 0) {
+				console.log('Loading mock data as fallback...');
+				loadMockData();
+			} else if (append && articles.length > 0) {
+				// If we're appending and already have mock data, load more mock data
+				console.log('Loading more mock data for infinite scroll...');
+				loadMoreMockData();
+			} else {
+				hasMore = false;
+				if (append) {
+					currentPage--; // Revert page increment on error
+				}
+			}
 		} finally {
 			isLoading = false;
 			isLoadingMore = false;
@@ -97,8 +335,17 @@
 		const windowHeight = window.innerHeight;
 		const documentHeight = document.documentElement.scrollHeight;
 
-		// Load more when user is 200px from bottom
-		if (scrollTop + windowHeight >= documentHeight - 200) {
+		// Load more when user is 300px from bottom (increased threshold)
+		if (scrollTop + windowHeight >= documentHeight - 300) {
+			console.log('Infinite scroll triggered:', { 
+				scrollTop, 
+				windowHeight, 
+				documentHeight, 
+				hasMore, 
+				isLoadingMore,
+				totalLoaded,
+				articlesCount: articles.length
+			});
 			loadMore();
 		}
 	}
