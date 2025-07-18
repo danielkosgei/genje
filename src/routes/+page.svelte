@@ -12,7 +12,10 @@
 	import PopularTopics from '$lib/components/PopularTopics.svelte';
 	import { newsAPI } from '$lib/api/news';
 	import type { NewsArticle } from '$lib/types/news';
+	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
+
+	let { data }: { data: PageData } = $props();
 
 	let isLoading = $state(true);
 	let isLoadingMore = $state(false);
@@ -142,7 +145,7 @@
 <div
 	class="from-background via-background to-muted/20 flex min-h-screen flex-col bg-gradient-to-br"
 >
-	<NewsHeader />
+	<NewsHeader user={data?.user} />
 
 	<!-- Hero Section -->
 	<section class="from-primary/10 via-primary/5 border-b bg-gradient-to-r to-transparent">
