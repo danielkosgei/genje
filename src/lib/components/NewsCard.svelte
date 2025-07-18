@@ -2,8 +2,9 @@
     import type { NewsArticle } from '$lib/types/news';
     import { Button } from '$lib/components/ui/button';
     import { extractDescription } from '$lib/utils/content';
+    import ArticleEngagement from './ArticleEngagement.svelte';
 
-    let { article }: { article: NewsArticle } = $props();
+    let { article, user = null }: { article: NewsArticle; user?: { id: string; username: string } | null } = $props();
 
     function formatDate(dateString: string) {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -56,6 +57,7 @@
             {getDescription(article)}
         </p>
         
+        <!-- Source info -->
         <div class="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
             <div class="flex items-center text-xs text-muted-foreground">
                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -74,6 +76,19 @@
                     Source
                 </Button>
             </div>
+        </div>
+
+        <!-- Engagement features -->
+        <div class="mt-4 pt-4 border-t border-border/50">
+            <ArticleEngagement 
+                articleId={article.id.toString()}
+                {user}
+                initialLikes={Math.floor(Math.random() * 50) + 5}
+                initialBookmarked={false}
+                initialUserLiked={false}
+                showComments={true}
+                compact={true}
+            />
         </div>
     </div>
 </article>

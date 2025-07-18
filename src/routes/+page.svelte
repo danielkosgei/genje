@@ -278,7 +278,7 @@
 									class="animate-fade-in-up"
 									style="animation-delay: {Math.min(index * 100, 500)}ms"
 								>
-									<NewsCard {article} />
+									<NewsCard {article} user={data?.user} />
 								</div>
 							{/each}
 						</div>
