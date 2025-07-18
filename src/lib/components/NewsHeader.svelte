@@ -3,6 +3,7 @@
     import { onMount } from 'svelte';
     import { enhance } from '$app/forms';
     import type { User } from '$lib/server/db/schema';
+    import EnhancedSearch from './EnhancedSearch.svelte';
     
     let { user = null }: { user?: User | null } = $props();
     
@@ -27,17 +28,12 @@
         }));
     }
 
-    function handleSearch() {
+    function handleSearch(query: string) {
+        searchQuery = query;
         dispatchEvent(new CustomEvent('filterChange', { 
-            detail: { category: selectedCategory, searchQuery },
+            detail: { category: selectedCategory, searchQuery: query },
             bubbles: true 
         }));
-    }
-
-    function handleKeyPress(event: KeyboardEvent) {
-        if (event.key === 'Enter') {
-            handleSearch();
-        }
     }
 
     function updateTime() {
@@ -98,33 +94,12 @@
             </div>
             
             <div class="flex items-center gap-4">
-                <!-- Search Bar -->
-                <div class="relative group">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <input
-                        type="search"
-                        placeholder="Search Kenyan news..."
-                        class="w-full sm:w-80 pl-10 pr-4 py-2.5 rounded-lg border border-border bg-background/50 backdrop-blur-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 placeholder:text-muted-foreground"
-                        bind:value={searchQuery}
-                        onkeypress={handleKeyPress}
-                        oninput={handleSearch}
-                    />
-                    {#if searchQuery}
-                        <button 
-                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-colors"
-                            onclick={() => { searchQuery = ''; handleSearch(); }}
-                            aria-label="Clear search"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    {/if}
-                </div>
+                <!-- Enhanced Search Bar -->
+                <EnhancedSearch 
+                    bind:searchQuery={searchQuery}
+                    onSearch={handleSearch}
+                    placeholder="Search Kenyan news..."
+                />
                 
                 <!-- Local Time -->
                 {#if mounted}
