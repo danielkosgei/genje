@@ -214,17 +214,17 @@
 
 	<main class="flex-1">
 		<div class="container mx-auto px-4 py-8">
-			<div class="flex gap-8">
+			<div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
 				<!-- Left Sidebar - Desktop Only -->
-				<aside class="hidden w-72 flex-shrink-0 2xl:block">
-					<div class="sticky top-24 space-y-6">
+				<aside class="hidden lg:block w-full lg:w-72 flex-shrink-0">
+					<div class="lg:sticky lg:top-24 space-y-6">
 						<PopularTopics />
 						<NewsletterSignup />
 					</div>
 				</aside>
 
 				<!-- Main Content -->
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-1 w-full">
 					{#if error && articles.length === 0}
 						<div class="flex flex-col items-center justify-center py-12 text-center">
 							<svg
@@ -323,7 +323,7 @@
 						</div>
 
 						<!-- Articles grid with staggered animation -->
-						<div class="grid gap-8 sm:grid-cols-2 xl:grid-cols-2">
+						<div class="grid gap-4 sm:gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
 							{#each articles as article, index (article.id)}
 								<div
 									class="animate-fade-in-up"
@@ -392,8 +392,8 @@
 				</div>
 
 				<!-- Right Sidebar - Desktop Only -->
-				<aside class="hidden w-80 flex-shrink-0 xl:block">
-					<div class="sticky top-24 space-y-6">
+				<aside class="hidden xl:block w-full xl:w-80 flex-shrink-0">
+					<div class="xl:sticky xl:top-24 space-y-6">
 						<TrendingSidebar />
 						<QuickActions />
 					</div>

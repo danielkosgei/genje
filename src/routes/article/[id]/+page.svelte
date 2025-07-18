@@ -259,13 +259,13 @@
                 </div>
 
                 <!-- Action buttons -->
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-card/50 rounded-xl border border-border/50">
+                <div class="flex flex-col gap-4 p-4 sm:p-6 bg-card/50 rounded-xl border border-border/50">
                     <Button 
                         variant="outline" 
                         href={article.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        class="flex items-center gap-2 hover:bg-primary/5 hover:border-primary/20"
+                        class="flex items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/20 w-full"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -273,12 +273,12 @@
                         Read Original Article
                     </Button>
                     
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                         <Button 
                             variant="ghost" 
                             size="sm" 
                             onclick={() => navigator.share?.({ title: article.title, url: window.location.href })}
-                            class="flex items-center gap-2"
+                            class="flex items-center justify-center gap-2 w-full sm:w-auto"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
@@ -290,7 +290,7 @@
                             variant="ghost" 
                             size="sm"
                             onclick={() => window.print()}
-                            class="flex items-center gap-2"
+                            class="flex items-center justify-center gap-2 w-full sm:w-auto"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
