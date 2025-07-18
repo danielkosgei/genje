@@ -1,17 +1,17 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     
-    // Popular topics based on common Kenyan news themes
-    let topics = $state([
-        { name: 'Politics', count: 45, trend: 'up', color: 'bg-blue-500/10 text-blue-600' },
-        { name: 'Economy', count: 32, trend: 'up', color: 'bg-green-500/10 text-green-600' },
-        { name: 'Education', count: 28, trend: 'down', color: 'bg-purple-500/10 text-purple-600' },
-        { name: 'Health', count: 24, trend: 'up', color: 'bg-red-500/10 text-red-600' },
-        { name: 'Sports', count: 19, trend: 'stable', color: 'bg-orange-500/10 text-orange-600' },
-        { name: 'Technology', count: 15, trend: 'up', color: 'bg-indigo-500/10 text-indigo-600' }
-    ]);
+    interface TrendingTopic {
+        name: string;
+        count: number;
+        trend: 'up' | 'down' | 'stable';
+        color: string;
+    }
     
+    let topics = $state<TrendingTopic[]>([]);
     let isLoading = $state(true);
+    let lastUpdated = $state<string>('');
+    let dataSource = $state<string>('loading');
     
     function handleTopicClick(topic: string) {
         window.dispatchEvent(new CustomEvent('filterChange', { 
@@ -41,11 +41,49 @@
         }
     }
     
-    onMount(() => {
-        // Simulate loading
-        setTimeout(() => {
+    async function loadTrendingTopics() {
+        try {
+            isLoading = true;
+            const response = await fetch('/api/topics/trending');
+            
+            if (response.ok) {
+                const data = await response.json();
+                topics = data.topics || [];
+                lastUpdated = data.lastUpdated || new Date().toISOString();
+                dataSource = data.source || 'unknown';
+            } else {
+                console.error('Failed to load trending topics');
+                // Fallback topics if API fails
+                topics = [
+                    { name: 'Breaking News', count: 20, trend: 'up', color: 'bg-red-500/10 text-red-600' },
+                    { name: 'Politics', count: 15, trend: 'stable', color: 'bg-blue-500/10 text-blue-600' },
+                    { name: 'Business', count: 12, trend: 'up', color: 'bg-green-500/10 text-green-600' },
+                    { name: 'Sports', count: 8, trend: 'stable', color: 'bg-orange-500/10 text-orange-600' }
+                ];
+                dataSource = 'fallback';
+            }
+        } catch (error) {
+            console.error('Error loading trending topics:', error);
+            // Fallback topics on error
+            topics = [
+                { name: 'Breaking News', count: 20, trend: 'up', color: 'bg-red-500/10 text-red-600' },
+                { name: 'Politics', count: 15, trend: 'stable', color: 'bg-blue-500/10 text-blue-600' },
+                { name: 'Business', count: 12, trend: 'up', color: 'bg-green-500/10 text-green-600' },
+                { name: 'Sports', count: 8, trend: 'stable', color: 'bg-orange-500/10 text-orange-600' }
+            ];
+            dataSource = 'fallback';
+        } finally {
             isLoading = false;
-        }, 800);
+        }
+    }
+
+    onMount(() => {
+        loadTrendingTopics();
+        
+        // Refresh trending topics every 10 minutes
+        const interval = setInterval(loadTrendingTopics, 10 * 60 * 1000);
+        
+        return () => clearInterval(interval);
     });
 </script>
 
@@ -97,8 +135,28 @@
         </div>
         
         <div class="mt-4 pt-4 border-t border-border/50">
-            <div class="text-xs text-muted-foreground text-center">
-                Topics trending in the last 24 hours
+            <div class="flex items-center justify-between">
+                <div class="text-xs text-muted-foreground">
+                    {#if dataSource === 'analytics'}
+                        Based on recent articles
+                    {:else if dataSource === 'mixed'}
+                        Mixed data & fallback
+                    {:else if dataSource === 'fallback'}
+                        Fallback topics
+                    {:else}
+                        Loading...
+                    {/if}
+                </div>
+                <button
+                    onclick={loadTrendingTopics}
+                    class="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                    disabled={isLoading}
+                >
+                    <svg class="w-3 h-3 {isLoading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {isLoading ? 'Updating...' : 'Refresh'}
+                </button>
             </div>
         </div>
     {/if}
