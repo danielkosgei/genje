@@ -147,19 +147,7 @@
 >
 	<NewsHeader user={data?.user} />
 
-	<!-- Hero Section -->
-	<section class="from-primary/10 via-primary/5 border-b bg-gradient-to-r to-transparent">
-		<div class="container mx-auto px-4 py-8">
-			<div class="text-center">
-				<h1 class="text-foreground mb-2 text-3xl font-bold md:text-4xl">
-					Stay Informed with Kenyan News
-				</h1>
-				<p class="text-muted-foreground mx-auto max-w-2xl text-lg">
-					Get the latest news from multiple sources across Kenya, in English and Kiswahili
-				</p>
-			</div>
-		</div>
-	</section>
+
 
 	<main class="flex-1">
 		<div class="container mx-auto px-4 py-8">
