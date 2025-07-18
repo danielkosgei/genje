@@ -55,7 +55,7 @@
 </script>
 
 <!-- Mobile Bottom Navigation -->
-<nav class="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/50 xl:hidden">
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/50 lg:hidden">
     <div class="flex items-center justify-around px-2 py-2">
         {#each navItems as item}
             {#if item.href}
@@ -84,4 +84,4 @@
 </nav>
 
 <!-- Spacer to prevent content from being hidden behind bottom nav -->
-<div class="h-20 xl:hidden"></div>
+<div class="h-20 lg:hidden"></div>
