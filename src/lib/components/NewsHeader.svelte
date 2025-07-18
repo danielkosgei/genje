@@ -118,8 +118,8 @@
                 
                 <!-- Auth Section -->
                 {#if user}
-                    <!-- User Menu -->
-                    <div class="relative user-menu-container">
+                    <!-- User Menu - Hidden on mobile since profile is in bottom nav -->
+                    <div class="relative user-menu-container hidden sm:block">
                         <button
                             onclick={toggleUserMenu}
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors"
@@ -193,12 +193,12 @@
                         onclick={handleLogin}
                         variant="outline"
                         size="sm"
-                        class="flex items-center gap-2"
+                        class="flex items-center justify-center gap-2 w-full sm:w-auto"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        <span class="hidden sm:inline">Login</span>
+                        <span>Login</span>
                     </Button>
                 {/if}
             </div>

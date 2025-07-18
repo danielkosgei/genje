@@ -83,9 +83,32 @@
 		console.log('Bookmark action:', { articleId, bookmarked: isBookmarked });
 	}
 
-	function handleShare(platform: string) {
+	function isMobileDevice() {
+		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+			   (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+	}
+
+	async function handleShare(platform?: string) {
 		const url = `${window.location.origin}/article/${articleId}`;
 		const title = 'Check out this article on Genje News';
+		
+		// Use native sharing on mobile devices
+		if (isMobileDevice() && navigator.share) {
+			try {
+				await navigator.share({
+					title: title,
+					url: url
+				});
+				showShareMenu = false;
+				return;
+			} catch (error) {
+				// Fall back to custom sharing if native sharing fails
+				console.log('Native sharing failed, falling back to custom share');
+			}
+		}
+
+		// Custom sharing for desktop or when native sharing isn't available
+		if (!platform) return;
 		
 		let shareUrl = '';
 		
@@ -211,19 +234,20 @@
 			<Button
 				variant="ghost"
 				size={compact ? "sm" : "default"}
-				class="engagement-btn {showShareMenu ? 'bg-primary/20' : ''}"
-				onclick={() => {
-					console.log('Share button clicked, current state:', showShareMenu);
-					showShareMenu = !showShareMenu;
-					console.log('Share button clicked, new state:', showShareMenu);
+				class="engagement-btn"
+				onclick={async () => {
+					// On mobile, use native sharing directly
+					if (isMobileDevice() && navigator.share) {
+						await handleShare();
+					} else {
+						// On desktop, show the custom share menu
+						showShareMenu = !showShareMenu;
+					}
 				}}
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
 				</svg>
-				{#if showShareMenu}
-					<span class="text-xs ml-1">OPEN</span>
-				{/if}
 			</Button>
 		</div>
 	</div>
