@@ -220,7 +220,7 @@
 			bind:this={searchInput}
 			type="search"
 			{placeholder}
-			class="w-full sm:w-80 pl-10 pr-12 py-2.5 rounded-lg border border-border bg-background/50 backdrop-blur-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 placeholder:text-muted-foreground {showSuggestions ? 'rounded-b-none border-b-0' : ''}"
+			class="w-full sm:w-64 md:w-80 pl-10 pr-12 py-2.5 rounded-lg border border-border bg-background/50 backdrop-blur-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 placeholder:text-muted-foreground {showSuggestions ? 'rounded-b-none border-b-0' : ''}"
 			bind:value={searchQuery}
 			oninput={handleInput}
 			onkeydown={handleKeyDown}

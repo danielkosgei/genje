@@ -24,7 +24,8 @@
 	let articles = $state<NewsArticle[]>([]);
 	let error = $state<string | null>(null);
 	let hasMore = $state(true);
-	let lastLoadedCount = $state(0);
+	let currentPage = $state(1);
+	let totalLoaded = $state(0);
 
 	async function loadArticles(append = false) {
 		try {
@@ -32,43 +33,96 @@
 				isLoading = true;
 				articles = [];
 				hasMore = true;
+				currentPage = 1;
+				totalLoaded = 0;
 			} else {
 				isLoadingMore = true;
+				currentPage++;
 			}
 			error = null;
 
 			let response;
-			const limit = append ? 10 : 20; // Load fewer items when appending
+			const limit = 20;
 
+			// Use different strategies based on what we're loading
 			if (searchQuery.trim()) {
-				response = await newsAPI.searchArticles(searchQuery.trim(), limit);
+				// For search, we'll load progressively larger batches
+				const searchLimit = limit * currentPage;
+				response = await newsAPI.searchArticles(searchQuery.trim(), searchLimit);
 			} else if (selectedCategory !== 'all') {
-				response = await newsAPI.getArticlesByCategory(selectedCategory, limit);
+				// For categories, we'll load progressively larger batches
+				const categoryLimit = limit * currentPage;
+				response = await newsAPI.getArticlesByCategory(selectedCategory, categoryLimit);
 			} else {
-				response = await newsAPI.getRecentArticles(limit);
+				// For "all news", use getRecentArticles which should work
+				const allNewsLimit = append ? limit * currentPage : limit;
+				console.log('Loading all news with getRecentArticles, limit:', allNewsLimit, 'page:', currentPage);
+				response = await newsAPI.getRecentArticles(allNewsLimit);
 			}
 
-			if (response.success && response.data) {
+			console.log('API Response:', response);
+
+			if (response && response.success && response.data) {
 				const newArticles = response.data;
-				lastLoadedCount = newArticles.length;
 
 				if (append) {
 					// Filter out duplicates when appending
 					const existingIds = new Set(articles.map((a) => a.id));
 					const uniqueNewArticles = newArticles.filter((a) => !existingIds.has(a.id));
-					articles = [...articles, ...uniqueNewArticles];
-					hasMore = uniqueNewArticles.length > 0 && newArticles.length === limit;
+					
+					if (uniqueNewArticles.length === 0) {
+						hasMore = false;
+						currentPage--; // Revert page increment
+					} else {
+						if (searchQuery.trim() || selectedCategory !== 'all') {
+							// For search/category, add only the new articles that weren't already loaded
+							const articlesToAdd = uniqueNewArticles.slice(-limit); // Get the last 'limit' articles
+							articles = [...articles, ...articlesToAdd];
+							totalLoaded = articles.length;
+							hasMore = newArticles.length >= limit * currentPage;
+						} else {
+							// For "all news", add the unique new articles
+							articles = [...articles, ...uniqueNewArticles];
+							totalLoaded = articles.length;
+							hasMore = uniqueNewArticles.length > 0 && newArticles.length >= limit * currentPage;
+						}
+					}
 				} else {
+					// Initial load
 					articles = newArticles;
-					hasMore = newArticles.length === limit;
+					totalLoaded = newArticles.length;
+					hasMore = newArticles.length >= limit;
 				}
+
+				console.log('Articles loaded:', {
+					append,
+					newCount: newArticles.length,
+					totalArticles: articles.length,
+					hasMore,
+					currentPage,
+					searchQuery: searchQuery || 'none',
+					category: selectedCategory
+				});
 			} else {
 				throw new Error('Invalid API response');
 			}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load articles';
-			console.error('Error loading articles:', err);
+			console.error('API Error Details:', err);
+			console.error('Response was:', response);
+			
+			// Check if it's a network error or API error
+			if (err instanceof Error && err.message.includes('fetch')) {
+				error = 'Unable to connect to news API. Please check your internet connection.';
+			} else if (err instanceof Error && err.message.includes('API Error:')) {
+				error = `News API Error: ${err.message}`;
+			} else {
+				error = err instanceof Error ? err.message : 'Failed to load articles';
+			}
+			
 			hasMore = false;
+			if (append) {
+				currentPage--; // Revert page increment on error
+			}
 		} finally {
 			isLoading = false;
 			isLoadingMore = false;
@@ -97,8 +151,17 @@
 		const windowHeight = window.innerHeight;
 		const documentHeight = document.documentElement.scrollHeight;
 
-		// Load more when user is 200px from bottom
-		if (scrollTop + windowHeight >= documentHeight - 200) {
+		// Load more when user is 300px from bottom (increased threshold)
+		if (scrollTop + windowHeight >= documentHeight - 300) {
+			console.log('Infinite scroll triggered:', { 
+				scrollTop, 
+				windowHeight, 
+				documentHeight, 
+				hasMore, 
+				isLoadingMore,
+				totalLoaded,
+				articlesCount: articles.length
+			});
 			loadMore();
 		}
 	}
@@ -151,17 +214,17 @@
 
 	<main class="flex-1">
 		<div class="container mx-auto px-4 py-8">
-			<div class="flex gap-8">
+			<div class="flex flex-col lg:flex-row gap-6 lg:gap-8">
 				<!-- Left Sidebar - Desktop Only -->
-				<aside class="hidden w-72 flex-shrink-0 2xl:block">
-					<div class="sticky top-24 space-y-6">
+				<aside class="hidden lg:block w-full lg:w-72 flex-shrink-0">
+					<div class="lg:sticky lg:top-24 space-y-6">
 						<PopularTopics />
 						<NewsletterSignup />
 					</div>
 				</aside>
 
 				<!-- Main Content -->
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-1 w-full">
 					{#if error && articles.length === 0}
 						<div class="flex flex-col items-center justify-center py-12 text-center">
 							<svg
@@ -260,7 +323,7 @@
 						</div>
 
 						<!-- Articles grid with staggered animation -->
-						<div class="grid gap-8 sm:grid-cols-2 xl:grid-cols-2">
+						<div class="grid gap-4 sm:gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
 							{#each articles as article, index (article.id)}
 								<div
 									class="animate-fade-in-up"
@@ -329,8 +392,8 @@
 				</div>
 
 				<!-- Right Sidebar - Desktop Only -->
-				<aside class="hidden w-80 flex-shrink-0 xl:block">
-					<div class="sticky top-24 space-y-6">
+				<aside class="hidden xl:block w-full xl:w-80 flex-shrink-0">
+					<div class="xl:sticky xl:top-24 space-y-6">
 						<TrendingSidebar />
 						<QuickActions />
 					</div>
