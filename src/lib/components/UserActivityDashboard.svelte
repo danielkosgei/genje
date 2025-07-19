@@ -10,17 +10,43 @@
 
 	let { user }: { user: { id: string; username: string } } = $props();
 
-	// Mock data - in real app, this would come from API
 	let stats = $state<ActivityStats>({
-		articlesRead: Math.floor(Math.random() * 100) + 20,
-		commentsPosted: Math.floor(Math.random() * 50) + 5,
-		articlesLiked: Math.floor(Math.random() * 80) + 10,
-		bookmarksSaved: Math.floor(Math.random() * 30) + 3,
-		readingStreak: Math.floor(Math.random() * 15) + 1,
-		favoriteCategory: ['Politics', 'Business', 'Sports', 'Technology'][Math.floor(Math.random() * 4)]
+		articlesRead: 0,
+		commentsPosted: 0,
+		articlesLiked: 0,
+		bookmarksSaved: 0,
+		readingStreak: 0,
+		favoriteCategory: 'Loading...'
 	});
 
-	let achievements = $state([
+	let isLoading = $state(true);
+
+	async function loadUserStats() {
+		try {
+			const response = await fetch('/api/user/stats');
+			if (response.ok) {
+				const result = await response.json();
+				if (result.success && result.data) {
+					stats = {
+						articlesRead: result.data.articlesRead,
+						commentsPosted: result.data.commentsPosted,
+						articlesLiked: result.data.articlesLiked,
+						bookmarksSaved: result.data.bookmarksSaved,
+						readingStreak: result.data.readingStreak,
+						favoriteCategory: result.data.favoriteCategory
+					};
+				}
+			}
+		} catch (error) {
+			console.error('Failed to load user stats:', error);
+			// Keep default values on error
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	// Reactive achievements based on stats
+	let achievements = $derived([
 		{ 
 			name: 'News Enthusiast', 
 			description: 'Read 50+ articles', 
@@ -46,6 +72,13 @@
 			icon: '🔥'
 		}
 	]);
+
+	// Load stats on mount
+	import { onMount } from 'svelte';
+	
+	onMount(() => {
+		loadUserStats();
+	});
 </script>
 
 <div class="bg-card rounded-xl border shadow-sm p-6">
@@ -157,19 +190,19 @@
 	<!-- Quick Actions -->
 	<div class="mt-6 pt-6 border-t border-border">
 		<div class="flex flex-wrap gap-3">
-			<a href="/bookmarks" class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
+			<a href="/profile/bookmarks" class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
 				</svg>
 				View Bookmarks
 			</a>
-			<a href="/reading-history" class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
+			<a href="/profile/reading-history" class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
 				</svg>
 				Reading History
 			</a>
-			<a href="/settings" class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
+			<a href="/profile/settings" class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
