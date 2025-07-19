@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { onMount } from 'svelte';
+	import { engagementAPI, type Comment } from '$lib/api/engagement';
 
 	interface EngagementProps {
 		articleId: string;
@@ -31,28 +32,9 @@
 	let isSubmittingComment = $state(false);
 	let shareButtonElement: HTMLElement | null = null;
 	let dropdownPosition = $state({ top: 0, left: 0 });
-	let comments = $state<
-		Array<{
-			id: string;
-			text: string;
-			author: string;
-			timestamp: string;
-		}>
-	>([
-		// Mock comments for demonstration
-		{
-			id: '1',
-			text: 'This is a very insightful article. Thanks for sharing!',
-			author: 'NewsReader',
-			timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-		},
-		{
-			id: '2',
-			text: 'Great coverage of this important topic.',
-			author: 'InfoSeeker',
-			timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-		}
-	]);
+	let comments = $state<Comment[]>([]);
+	let isLoadingComments = $state(false);
+	let isLoadingEngagement = $state(false);
 
 	async function handleLike() {
 		if (!user) {
@@ -61,18 +43,38 @@
 			return;
 		}
 
-		if (userLiked) {
-			// Remove like
-			likes--;
-			userLiked = false;
-		} else {
-			// Add like
-			likes++;
-			userLiked = true;
-		}
+		try {
+			// Optimistic update
+			const previousLiked = userLiked;
+			const previousLikes = likes;
+			
+			if (userLiked) {
+				likes--;
+				userLiked = false;
+			} else {
+				likes++;
+				userLiked = true;
+			}
 
-		// TODO: Send to API
-		console.log('Like action:', { articleId, liked: userLiked });
+			// Send to API
+			const response = await engagementAPI.toggleLike(articleId, previousLiked);
+			
+			if (response.success && response.data) {
+				// Update with real data from API
+				likes = response.data.likesCount || likes;
+				userLiked = response.data.liked;
+			}
+		} catch (error) {
+			console.error('Error toggling like:', error);
+			// Revert optimistic update on error
+			if (userLiked) {
+				likes--;
+				userLiked = false;
+			} else {
+				likes++;
+				userLiked = true;
+			}
+		}
 	}
 
 	async function handleBookmark() {
@@ -81,10 +83,23 @@
 			return;
 		}
 
-		isBookmarked = !isBookmarked;
+		try {
+			// Optimistic update
+			const previousBookmarked = isBookmarked;
+			isBookmarked = !isBookmarked;
 
-		// TODO: Send to API
-		console.log('Bookmark action:', { articleId, bookmarked: isBookmarked });
+			// Send to API
+			const response = await engagementAPI.toggleBookmark(articleId, previousBookmarked);
+			
+			if (response.success && response.data) {
+				// Update with real data from API
+				isBookmarked = response.data.bookmarked;
+			}
+		} catch (error) {
+			console.error('Error toggling bookmark:', error);
+			// Revert optimistic update on error
+			isBookmarked = !isBookmarked;
+		}
 	}
 
 	function isMobileDevice() {
@@ -145,20 +160,32 @@
 
 		isSubmittingComment = true;
 
-		// TODO: Send to API
-		const newComment = {
-			id: Date.now().toString(),
-			text: commentText.trim(),
-			author: user.username,
-			timestamp: new Date().toISOString()
-		};
-
-		comments = [newComment, ...comments];
-		commentText = '';
-		showCommentForm = false;
-		isSubmittingComment = false;
-
-		console.log('Comment submitted:', { articleId, comment: newComment });
+		try {
+			// Send comment to API
+			const response = await engagementAPI.submitComment(articleId, commentText.trim());
+			
+			if (response.success && response.data) {
+				// Add new comment to the list
+				const newComment: Comment = {
+					id: response.data.id,
+					text: response.data.text,
+					author: {
+						id: user.id,
+						username: user.username
+					},
+					timestamp: response.data.timestamp
+				};
+				
+				comments = [newComment, ...comments];
+				commentText = '';
+				showCommentForm = false;
+			}
+		} catch (error) {
+			console.error('Error submitting comment:', error);
+			// Could show an error message to user here
+		} finally {
+			isSubmittingComment = false;
+		}
 	}
 
 	function formatCommentTime(timestamp: string) {
@@ -173,6 +200,45 @@
 		return date.toLocaleDateString();
 	}
 
+	// Load initial engagement data (likes, bookmarks, etc.)
+	async function loadEngagementData() {
+		if (!user) return;
+
+		try {
+			isLoadingEngagement = true;
+			const engagement = await engagementAPI.getUserEngagement(articleId);
+			
+			// Update state with real data from API
+			likes = engagement.likesCount;
+			userLiked = engagement.liked;
+			isBookmarked = engagement.bookmarked;
+		} catch (error) {
+			console.error('Error loading engagement data:', error);
+			// Keep initial values on error
+		} finally {
+			isLoadingEngagement = false;
+		}
+	}
+
+	// Load comments for the article
+	async function loadComments() {
+		if (!showComments || compact) return;
+
+		try {
+			isLoadingComments = true;
+			const response = await engagementAPI.getComments(articleId, 1, 20);
+			
+			if (response.success && response.data) {
+				comments = response.data.comments;
+			}
+		} catch (error) {
+			console.error('Error loading comments:', error);
+			// Keep empty comments array on error
+		} finally {
+			isLoadingComments = false;
+		}
+	}
+
 	// Close share menu when clicking outside
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as Element;
@@ -182,6 +248,10 @@
 	}
 
 	onMount(() => {
+		// Load initial data
+		loadEngagementData();
+		loadComments();
+
 		// Add click outside listener for share menu
 		document.addEventListener('click', handleClickOutside);
 
@@ -475,11 +545,11 @@
 					<div
 						class="bg-primary/20 text-primary flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium"
 					>
-						{comment.author.charAt(0).toUpperCase()}
+						{comment.author.username.charAt(0).toUpperCase()}
 					</div>
 					<div class="flex-1">
 						<div class="mb-1 flex items-center gap-2">
-							<span class="text-foreground text-sm font-medium">{comment.author}</span>
+							<span class="text-foreground text-sm font-medium">{comment.author.username}</span>
 							<span class="text-muted-foreground text-xs"
 								>{formatCommentTime(comment.timestamp)}</span
 							>
