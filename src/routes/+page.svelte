@@ -46,13 +46,25 @@
 
 			// Use different strategies based on what we're loading
 			if (searchQuery.trim()) {
-				// For search, we'll load progressively larger batches
-				const searchLimit = limit * currentPage;
-				response = await newsAPI.searchArticles(searchQuery.trim(), searchLimit);
+				// For search, use simple limit (no pagination support in API)
+				console.log('Loading search results, query:', searchQuery.trim(), 'limit:', limit);
+				response = await newsAPI.searchArticles(searchQuery.trim(), limit);
+				// Search doesn't support pagination, so disable infinite scroll
+				if (append) {
+					hasMore = false;
+					currentPage--; // Revert page increment
+					return;
+				}
 			} else if (selectedCategory !== 'all') {
-				// For categories, we'll load progressively larger batches
-				const categoryLimit = limit * currentPage;
-				response = await newsAPI.getArticlesByCategory(selectedCategory, categoryLimit);
+				// For categories, use simple limit (no pagination support in API)
+				console.log('Loading category articles, category:', selectedCategory, 'limit:', limit);
+				response = await newsAPI.getArticlesByCategory(selectedCategory, limit);
+				// Categories don't support pagination, so disable infinite scroll
+				if (append) {
+					hasMore = false;
+					currentPage--; // Revert page increment
+					return;
+				}
 			} else {
 				// For "all news", use proper pagination with getArticles
 				console.log('Loading all news with getArticles, page:', currentPage, 'limit:', limit);
