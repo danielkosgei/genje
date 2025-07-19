@@ -46,46 +46,64 @@
 
 			// Use different strategies based on what we're loading
 			if (searchQuery.trim()) {
-				// For search, we'll load progressively larger batches
-				const searchLimit = limit * currentPage;
-				response = await newsAPI.searchArticles(searchQuery.trim(), searchLimit);
+				// For search, use simple limit (no pagination support in API)
+				console.log('Loading search results, query:', searchQuery.trim(), 'limit:', limit);
+				response = await newsAPI.searchArticles(searchQuery.trim(), limit);
+				// Search doesn't support pagination, so disable infinite scroll
+				if (append) {
+					hasMore = false;
+					currentPage--; // Revert page increment
+					return;
+				}
 			} else if (selectedCategory !== 'all') {
-				// For categories, we'll load progressively larger batches
-				const categoryLimit = limit * currentPage;
-				response = await newsAPI.getArticlesByCategory(selectedCategory, categoryLimit);
+				// For categories, use simple limit (no pagination support in API)
+				console.log('Loading category articles, category:', selectedCategory, 'limit:', limit);
+				response = await newsAPI.getArticlesByCategory(selectedCategory, limit);
+				// Categories don't support pagination, so disable infinite scroll
+				if (append) {
+					hasMore = false;
+					currentPage--; // Revert page increment
+					return;
+				}
 			} else {
-				// For "all news", use getRecentArticles which should work
-				const allNewsLimit = append ? limit * currentPage : limit;
-				console.log('Loading all news with getRecentArticles, limit:', allNewsLimit, 'page:', currentPage);
-				response = await newsAPI.getRecentArticles(allNewsLimit);
+				// For "all news", use proper pagination with getArticles
+				console.log('Loading all news with getArticles, page:', currentPage, 'limit:', limit);
+				try {
+					response = await newsAPI.getArticles(currentPage, limit);
+					console.log('getArticles response:', response);
+				} catch (apiError) {
+					console.error('getArticles failed, falling back to getRecentArticles:', apiError);
+					// Fallback to getRecentArticles if getArticles fails
+					response = await newsAPI.getRecentArticles(limit);
+					console.log('getRecentArticles fallback response:', response);
+				}
 			}
 
 			console.log('API Response:', response);
 
+			// Handle different API response formats
+			let newArticles;
 			if (response && response.success && response.data) {
-				const newArticles = response.data;
+				// Standard format: { success: true, data: [...] }
+				newArticles = response.data;
+			} else if (response && response.articles) {
+				// getArticles format: { articles: [...], pagination: {...} }
+				newArticles = response.articles;
+			} else {
+				throw new Error('Invalid API response format');
+			}
+
+			if (newArticles) {
 
 				if (append) {
-					// Filter out duplicates when appending
-					const existingIds = new Set(articles.map((a) => a.id));
-					const uniqueNewArticles = newArticles.filter((a) => !existingIds.has(a.id));
-					
-					if (uniqueNewArticles.length === 0) {
+					// For pagination, just append the new articles
+					if (newArticles.length === 0) {
 						hasMore = false;
 						currentPage--; // Revert page increment
 					} else {
-						if (searchQuery.trim() || selectedCategory !== 'all') {
-							// For search/category, add only the new articles that weren't already loaded
-							const articlesToAdd = uniqueNewArticles.slice(-limit); // Get the last 'limit' articles
-							articles = [...articles, ...articlesToAdd];
-							totalLoaded = articles.length;
-							hasMore = newArticles.length >= limit * currentPage;
-						} else {
-							// For "all news", add the unique new articles
-							articles = [...articles, ...uniqueNewArticles];
-							totalLoaded = articles.length;
-							hasMore = uniqueNewArticles.length > 0 && newArticles.length >= limit * currentPage;
-						}
+						articles = [...articles, ...newArticles];
+						totalLoaded = articles.length;
+						hasMore = newArticles.length >= limit; // If we got fewer than limit, we're at the end
 					}
 				} else {
 					// Initial load
@@ -219,7 +237,6 @@
 				<aside class="hidden lg:block w-full lg:w-72 flex-shrink-0">
 					<div class="lg:sticky lg:top-24 space-y-6">
 						<PopularTopics />
-						<NewsletterSignup />
 					</div>
 				</aside>
 
