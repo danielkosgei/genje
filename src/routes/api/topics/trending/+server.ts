@@ -1,70 +1,236 @@
 import { json } from '@sveltejs/kit';
+import { TwitterApi } from 'twitter-api-v2';
+import { 
+  TWITTER_ACCESS_TOKEN, 
+  TWITTER_API_KEY, 
+  TWITTER_API_SECRET, 
+  TWITTER_ACCESS_SECRET 
+} from '$env/static/private';
 import type { RequestHandler } from './$types';
-import { topicAnalytics } from '$lib/server/topicAnalytics';
-import { newsAPI } from '$lib/api/news';
 
-export const GET: RequestHandler = async () => {
-	try {
-		// Get recent articles to analyze
-		const articlesResponse = await newsAPI.getRecentArticles(100); // Analyze last 100 articles
-		
-		if (articlesResponse.success && articlesResponse.data) {
-			// Analyze the articles for trending topics
-			topicAnalytics.analyzeArticles(articlesResponse.data);
-		}
+// Store recently posted article IDs to avoid duplicates
+let recentlyPosted: Set<number> = new Set();
 
-		// Get trending topics
-		const trendingTopics = topicAnalytics.getTrendingTopics(8);
+// Clear the cache every hour
+setInterval(() => {
+  recentlyPosted.clear();
+}, 60 * 60 * 1000);
 
-		// If we don't have enough trending topics, provide some fallback topics
-		if (trendingTopics.length < 4) {
-			const fallbackTopics = [
-				{ name: 'Politics', count: 15, trend: 'stable' as const, color: 'bg-blue-500/10 text-blue-600' },
-				{ name: 'Business', count: 12, trend: 'up' as const, color: 'bg-green-500/10 text-green-600' },
-				{ name: 'Sports', count: 8, trend: 'stable' as const, color: 'bg-orange-500/10 text-orange-600' },
-				{ name: 'Education', count: 6, trend: 'down' as const, color: 'bg-purple-500/10 text-purple-600' }
-			];
+function generateHashtags(article: any): string {
+  const hashtags = ['#Kenya'];
+  
+  // Add category-based hashtags
+  if (article.category) {
+    switch (article.category.toLowerCase()) {
+      case 'politics':
+        hashtags.push('#KenyaPolitics');
+        break;
+      case 'sports':
+        hashtags.push('#KenyaSports');
+        break;
+      case 'business':
+        hashtags.push('#KenyaBusiness');
+        break;
+      case 'entertainment':
+        hashtags.push('#KenyaEntertainment');
+        break;
+      case 'health':
+        hashtags.push('#KenyaHealth');
+        break;
+      case 'technology':
+        hashtags.push('#KenyaTech');
+        break;
+      default:
+        hashtags.push('#KenyaNews');
+    }
+  } else {
+    hashtags.push('#KenyaNews');
+  }
+  
+  // Add source-based hashtag if it's a major source
+  if (article.source && article.source.toLowerCase().includes('nation')) {
+    hashtags.push('#DailyNation');
+  } else if (article.source && article.source.toLowerCase().includes('standard')) {
+    hashtags.push('#StandardMedia');
+  }
+  
+  return hashtags.join(' ');
+}
 
-			// Combine real trending topics with fallbacks
-			const combinedTopics = [
-				...trendingTopics,
-				...fallbackTopics.filter(fallback => 
-					!trendingTopics.some(trending => trending.name.toLowerCase() === fallback.name.toLowerCase())
-				)
-			].slice(0, 8);
+async function uploadImageToTwitter(client: TwitterApi, imageUrl: string): Promise<string | null> {
+  try {
+    console.log('Attempting to upload image:', imageUrl);
+    
+    // Fetch the image
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      console.log('Failed to fetch image:', imageResponse.status);
+      return null;
+    }
+    
+    // Get the image as buffer
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    
+    // Determine mime type from URL or response headers
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to Twitter
+    const mediaId = await client.v1.uploadMedia(imageBuffer, { 
+      mimeType: contentType,
+      target: 'tweet'
+    });
+    
+    console.log('Image uploaded successfully:', mediaId);
+    return mediaId;
+  } catch (error) {
+    console.error('Failed to upload image:', error);
+    return null;
+  }
+}
 
-			return json({
-				topics: combinedTopics,
-				source: 'mixed',
-				lastUpdated: new Date().toISOString(),
-				analytics: topicAnalytics.getAnalyticsSnapshot()
-			});
-		}
+export const POST: RequestHandler = async () => {
+  try {
+    // Fetch trending articles
+    console.log('Fetching trending articles from API...');
+    const res = await fetch('https://api.genje.co.ke/v1/articles/trending');
+    
+    console.log('API Response status:', res.status);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.log('API Error response:', errorText);
+      return json({ 
+        success: false, 
+        error: `Failed to fetch articles: ${res.status} - ${errorText}` 
+      });
+    }
 
-		return json({
-			topics: trendingTopics,
-			source: 'analytics',
-			lastUpdated: new Date().toISOString(),
-			analytics: topicAnalytics.getAnalyticsSnapshot()
-		});
-	} catch (error) {
-		console.error('Error fetching trending topics:', error);
-		
-		// Return fallback topics if there's an error
-		const fallbackTopics = [
-			{ name: 'Breaking News', count: 20, trend: 'up' as const, color: 'bg-red-500/10 text-red-600' },
-			{ name: 'Politics', count: 15, trend: 'stable' as const, color: 'bg-blue-500/10 text-blue-600' },
-			{ name: 'Business', count: 12, trend: 'up' as const, color: 'bg-green-500/10 text-green-600' },
-			{ name: 'Sports', count: 8, trend: 'stable' as const, color: 'bg-orange-500/10 text-orange-600' },
-			{ name: 'Technology', count: 6, trend: 'up' as const, color: 'bg-indigo-500/10 text-indigo-600' },
-			{ name: 'Education', count: 5, trend: 'down' as const, color: 'bg-purple-500/10 text-purple-600' }
-		];
+    const data = await res.json();
+    const articles = data.data || data;
+    
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return json({ 
+        success: false, 
+        error: 'No articles found in trending feed' 
+      });
+    }
 
-		return json({
-			topics: fallbackTopics,
-			source: 'fallback',
-			lastUpdated: new Date().toISOString(),
-			error: 'Failed to analyze articles'
-		});
-	}
+    // Filter out recently posted articles
+    const availableArticles = articles.filter(article => 
+      !recentlyPosted.has(article.id) && article.title && article.url
+    );
+
+    if (availableArticles.length === 0) {
+      return json({ 
+        success: false, 
+        error: 'No new articles to post (all recently posted or invalid)' 
+      });
+    }
+
+    // Get the first available article
+    const article = availableArticles[0];
+    console.log('Selected article:', { id: article.id, title: article.title });
+
+    // Initialize Twitter client
+    const client = new TwitterApi({
+      appKey: TWITTER_API_KEY,
+      appSecret: TWITTER_API_SECRET,  
+      accessToken: TWITTER_ACCESS_TOKEN,
+      accessSecret: TWITTER_ACCESS_SECRET
+    });
+
+    // Generate hashtags
+    const hashtags = generateHashtags(article);
+    
+function createSlugFromTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '')     // Remove leading/trailing hyphens
+    .substring(0, 50);           // Limit length
+}
+
+// Later in the POST function, replace the genjeUrl line:
+    // Use original source URL since IDs don't match
+    const genjeUrl = article.url;
+    
+    // Construct tweet content
+    const hashtagsLength = hashtags.length + 1; // +1 for space
+    const urlLength = 23; // Twitter's t.co URL length
+    const spacing = 3; // newlines and spaces
+    const maxTitleLength = 280 - hashtagsLength - urlLength - spacing;
+    
+    let title = article.title;
+    if (title.length > maxTitleLength) {
+      title = title.substring(0, maxTitleLength - 3) + '...';
+    }
+    
+    const tweetText = `${title}\n\n${genjeUrl}\n\n${hashtags}`;
+    
+    console.log('Tweet content:', { 
+      text: tweetText, 
+      length: tweetText.length 
+    });
+
+    // Try to upload image if available
+    let mediaId = null;
+    if (article.image_url) {
+      mediaId = await uploadImageToTwitter(client, article.image_url);
+    }
+
+    // Post the tweet
+    const tweetOptions: any = { text: tweetText };
+    if (mediaId) {
+      tweetOptions.media = { media_ids: [mediaId] };
+    }
+
+    const response = await client.v2.tweet(tweetOptions);
+
+    // Mark this article as recently posted
+    recentlyPosted.add(article.id);
+
+    console.log('Tweet posted successfully:', {
+      tweetId: response.data.id,
+      articleId: article.id,
+      articleTitle: article.title,
+      tweetLength: tweetText.length,
+      hasImage: !!mediaId
+    });
+
+    return json({ 
+      success: true, 
+      tweetId: response.data.id,
+      tweetUrl: `https://twitter.com/user/status/${response.data.id}`,
+      articleId: article.id,
+      articleTitle: article.title,
+      hasImage: !!mediaId,
+      availableArticles: availableArticles.length,
+      hashtags
+    });
+
+  } catch (error) {
+    console.error('Twitter post failed:', error);
+    
+    // More specific error handling
+    if (error instanceof Error) {
+      if (error.message.includes('duplicate')) {
+        return json({ 
+          success: false, 
+          error: 'Duplicate tweet detected. Try again for next article.',
+          canRetry: true
+        });
+      }
+      if (error.message.includes('rate limit')) {
+        return json({ 
+          success: false, 
+          error: 'Twitter rate limit exceeded. Try again later.' 
+        });
+      }
+    }
+
+    return json({ 
+      success: false, 
+      error: 'Failed to post tweet. Check console for details.' 
+    });
+  }
 };

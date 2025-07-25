@@ -9,27 +9,13 @@
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
-    
-    let article = $state<NewsArticle | null>(null);
-    let isLoading = $state(true);
+    let article = $state<NewsArticle | null>(data.article);
+    let isLoading = $state(false);
     let error = $state<string | null>(null);
+
     let summary = $state<string | null>(null);
     let isGeneratingSummary = $state(false);
     let showShareMenu = $state(false);
-
-    async function loadArticle() {
-        try {
-            isLoading = true;
-            error = null;
-            const id = parseInt($page.params.id);
-            article = await newsAPI.getArticleById(id);
-        } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to load article';
-            console.error('Error loading article:', err);
-        } finally {
-            isLoading = false;
-        }
-    }
 
     async function generateSummary() {
         if (!article) return;
