@@ -143,7 +143,7 @@ export const POST: RequestHandler = async () => {
     const hashtags = generateHashtags(article);
     
     // Use your website URL instead of source URL
-    const genjeUrl = `https://genje.co.ke/articles/${article.id}`;
+    const genjeUrl = `https://genje.co.ke/article/${article.id}`;
     
     // Construct tweet content
     const hashtagsLength = hashtags.length + 1; // +1 for space
