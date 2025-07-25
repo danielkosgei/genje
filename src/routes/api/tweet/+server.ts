@@ -46,7 +46,7 @@ function generateHashtags(article: any): string {
 export const POST: RequestHandler = async () => {
   try {
     console.log('Fetching trending articles...');
-    const res = await fetch('https://api.genje.co.ke/v1/articles/trending?limit=5');
+    const res = await fetch('https://api.genje.co.ke/v1/articles/trending?limit=2');
 
     if (!res.ok) {
       const errorText = await res.text();
