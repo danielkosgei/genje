@@ -316,25 +316,7 @@
                         </div>
                     {/if}
                     
-                    {#if article.image_url}
-                        <div class="relative overflow-hidden rounded-xl mb-8 shadow-lg">
-                            <img
-                                src={article.image_url}
-                                alt={article.title}
-                                class="w-full h-64 md:h-96 object-cover hover:scale-105 transition-transform duration-500"
-                            />
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                        </div>
-                    {/if}
-                </header>
-
-                <div class="prose prose-lg max-w-none mb-12 leading-relaxed">
-                    <div class="article-content text-foreground/90 leading-8">
-                        {@html article.content}
-                    </div>
-                </div>
-
-                <!-- AI Summary Section -->
+                    <!-- AI Summary Section -->
                 <div class="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-6 mb-8 border border-primary/20">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2">
@@ -379,6 +361,16 @@
                         <p class="text-muted-foreground text-sm">Click the button above to generate an AI-powered summary of this article.</p>
                     {/if}
                 </div>
+                    
+                </header>
+
+                <div class="prose prose-lg max-w-none mb-12 leading-relaxed">
+                    <div class="article-content text-foreground/90 leading-8">
+                        {@html article.content}
+                    </div>
+                </div>
+
+                
 
                 <!-- Engagement Section -->
                 <div id="comments" class="mb-8">
