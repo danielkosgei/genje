@@ -350,16 +350,17 @@
                     </div>
                     
                     {#if summary}
-                        <div class="bg-card/50 p-4 rounded-lg border border-border/50">
-                            <p class="text-foreground/80 leading-relaxed">{summary}</p>
-                        </div>
-                    {:else if article.summary}
-                        <div class="bg-card/50 p-4 rounded-lg border border-border/50">
-                            <p class="text-foreground/80 leading-relaxed">{article.summary}</p>
-                        </div>
-                    {:else}
-                        <p class="text-muted-foreground text-sm">Click the button above to generate an AI-powered summary of this article.</p>
-                    {/if}
+    <div class="bg-card/50 p-4 rounded-lg border border-border/50">
+        <p class="text-foreground/80 leading-relaxed">{stripHtml(summary)}</p>
+    </div>
+{:else if article.summary}
+    <div class="bg-card/50 p-4 rounded-lg border border-border/50">
+        <p class="text-foreground/80 leading-relaxed">{stripHtml(article.summary)}</p>
+    </div>
+{:else}
+    <p class="text-muted-foreground text-sm">Click the button above to generate an AI-powered summary of this article.</p>
+{/if}
+
                 </div>
                     
                 </header>
