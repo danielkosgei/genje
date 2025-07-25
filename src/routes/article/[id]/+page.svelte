@@ -121,6 +121,17 @@
 </script>
 
 <svelte:head>
+    <meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={article.title} />
+	<meta name="twitter:description" content={article.summary || article.content.slice(0, 150)} />
+	<meta name="twitter:image" content={article.image_url} />
+	<meta name="twitter:site" content="@genjeke" />
+
+	<meta property="og:title" content={article.title} />
+	<meta property="og:description" content={article.summary || article.content.slice(0, 150)} />
+	<meta property="og:image" content={article.image_url} />
+	<meta property="og:url" content={`https://genje.co.ke/articles/${article.id}`} />
+	<meta property="og:type" content="article" />
     {#if article}
         <title>{article.title} - Genje News</title>
         <meta name="description" content={stripHtml(article.content).substring(0, 160)} />
