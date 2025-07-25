@@ -1,0 +1,13 @@
+name: Send Tweet Ping
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # Every 15 minutes (UTC)
+  workflow_dispatch:         # Allow manual trigger too
+
+jobs:
+  send-ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST to genje.co.ke
+        run: curl -X POST https://genje.co.ke/api/tweet
