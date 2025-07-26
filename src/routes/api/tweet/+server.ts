@@ -11,6 +11,10 @@ import type { RequestHandler } from './$types';
 // Store recently posted article IDs to avoid duplicates
 let recentlyPosted: Set<number> = new Set();
 
+// Track last tweet time
+let lastPostedAt = 0;
+const MIN_POST_INTERVAL = 60 * 60 * 1000; // 1 hour in ms
+
 // Clear the cache every hour
 setInterval(() => {
   recentlyPosted.clear();
@@ -45,6 +49,14 @@ function generateHashtags(article: any): string {
 
 export const POST: RequestHandler = async () => {
   try {
+    const now = Date.now();
+
+    // Enforce minimum time between tweets
+    if (now - lastPostedAt < MIN_POST_INTERVAL) {
+      console.log('Skipping tweet: cooldown in effect.');
+      return json({ success: false, error: 'Cooldown in effect. Try again later.' });
+    }
+
     console.log('Fetching trending articles...');
     const res = await fetch('https://api.genje.co.ke/v1/articles/trending?limit=2');
 
@@ -100,6 +112,7 @@ export const POST: RequestHandler = async () => {
     const response = await client.v2.tweet({ text: tweetText });
 
     recentlyPosted.add(article.id);
+    lastPostedAt = now;
 
     console.log('Tweet posted successfully:', response.data.id);
 
